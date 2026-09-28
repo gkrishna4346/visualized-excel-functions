@@ -1,0 +1,1950 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Visualized Excel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Monoton&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ---------- Theme tokens: navy · white · orange · grey (red only for errors) ---------- */
+:root{
+  --bg:#EDF0F5; --panel:#FFFFFF; --ink:#14203F; --muted:#5E687C; --line:#D5DAE3; --chip:#F2F4F8;
+  --navy:#1B2A5B; --navy-deep:#0F1A3C; --org:#EE7B22; --org-ink:#B9580C; --org-soft:#FFF0E2;
+  --grey:#8A93A6; --grey-soft:#EEF0F4; --red:#C62828; --red-soft:#FDECEA;
+  --hl-o:#EE7B22; --hl-n:#1B2A5B; --hl-g:#8A93A6;
+  --cell:#FFFFFF; --cellhead:#F2F4F8; --black:#000000;
+  --sans:'Schibsted Grotesk', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --gap:8px;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0A1330; --panel:#121E46; --ink:#E7EBF6; --muted:#9AA6C4; --line:#24346B; --chip:#1A295A;
+  --navy:#9DB2F0; --navy-deep:#0B1535; --org:#FF9A45; --org-ink:#FFAA5E; --org-soft:#3A2616;
+  --grey:#8C97B5; --grey-soft:#1A2753; --red:#FF6B6B; --red-soft:#3A1720;
+  --hl-o:#FF9A45; --hl-n:#9DB2F0; --hl-g:#8C97B5;
+  --cell:#0F1A3E; --cellhead:#16244F; --black:#E7EBF6; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden}
+button{font:inherit;color:inherit}
+code,.mono{font-family:var(--mono);font-size:.92em}
+:focus-visible{outline:2px solid var(--org);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+
+.app{height:100%;padding:1vh 1vw;display:grid;grid-template-rows:auto 1fr auto;gap:var(--gap)}
+.site-foot{text-align:center;font-size:12px;color:var(--muted);padding:2px 0}
+.site-foot a{color:var(--org-ink);text-decoration:none;font-weight:600}
+.site-foot a:hover{text-decoration:underline}
+header{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;column-gap:18px;min-height:46px}
+.brand{font-family:'Monoton','Schibsted Grotesk',system-ui,sans-serif;font-size:clamp(1.6rem,2.4vw,2.1rem);line-height:1;letter-spacing:.02em;color:var(--navy);user-select:none}
+:root[data-theme="dark"] .brand{color:var(--org)}
+:root[data-theme="dark"] .sec{background:#1C2C66}
+h1{margin:0;color:var(--org-ink);font-size:clamp(1.2rem,2.2vw,1.9rem);font-weight:700;letter-spacing:-.025em;line-height:1}
+h1 small{font-size:.5em;font-weight:500;color:var(--muted);letter-spacing:0;margin-left:10px}
+.theme-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;display:grid;place-items:center}
+.theme-btn svg{width:18px;height:18px}
+:root[data-theme="dark"] .theme-btn{background:var(--org);color:#0A1330;border-color:transparent}
+.search{width:clamp(200px,22vw,300px);display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--line);border-radius:18px;background:var(--panel);color:var(--muted)}
+.search svg{width:15px;height:15px;flex:none}
+.search input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:13px var(--sans);outline:none}
+.search kbd{font:11px var(--mono);border:1px solid var(--line);border-radius:4px;padding:0 5px;line-height:16px}
+.search:focus-within{border-color:var(--org)} .search:focus-within kbd{display:none}
+
+.main{display:grid;grid-template-columns:minmax(210px,15fr) 85fr;gap:var(--gap);min-height:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
+.panel-head{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:13.5px;font-weight:600;flex:none;min-height:40px}
+.panel-head .hint{margin-left:auto;font-weight:400;color:var(--muted);font-size:12.5px}
+.panel-body{flex:1;min-height:0;overflow:auto;scrollbar-width:thin}
+.empty{padding:18px;color:var(--muted);font-size:13px}
+
+/* ---------- Sidebar ---------- */
+.side nav{padding:6px}
+.group-label{font-size:11.5px;color:var(--muted);padding:10px 6px 4px;font-weight:600}
+.cat+.cat{margin-top:5px}
+.sec{width:100%;display:flex;align-items:center;gap:8px;text-align:left;border:0;cursor:pointer;padding:7px 10px;border-radius:8px;background:var(--navy-deep);color:#8F9BB8;font-size:12px;line-height:1.3}
+.sec-text{flex:1;min-width:0}
+.sec b{display:block;color:#F3F5FA;font-size:13px;font-weight:600}
+.sec .count{flex:none;min-width:22px;height:18px;padding:0 6px;border-radius:9px;background:var(--org);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center}
+.sec .chev{flex:none;width:14px;height:14px;color:#F3F5FA;transition:transform .2s}
+.sec[aria-expanded="true"] .chev{transform:rotate(90deg)}
+.sec.gp[aria-current="true"]{box-shadow:inset 3px 0 0 var(--org)}
+.items{list-style:none;margin:4px 0 2px;padding:0 0 0 6px}
+.items[hidden]{display:none}
+.items button{width:100%;text-align:left;border:0;background:transparent;cursor:pointer;padding:5px 8px;border-radius:6px;font-size:12.5px;color:var(--ink);display:flex;align-items:center;gap:6px}
+.items button:hover{background:var(--chip)}
+.items button[aria-current="true"]{background:var(--org-soft);color:var(--org-ink);font-weight:600}
+.items .lv{margin-left:auto;font-size:10px;color:var(--muted)}
+.cat[hidden],.nomatch[hidden]{display:none}
+.nomatch{margin:12px;color:var(--muted);font-size:13px;text-align:center}
+
+/* ---------- Function dashboard ---------- */
+.body{display:grid;grid-template-columns:34fr 42fr 24fr;grid-template-rows:47fr 53fr;gap:var(--gap);min-height:0;min-width:0}
+.p-formula{grid-area:1/1} .p-sheet{grid-area:1/2} .p-output{grid-area:1/3}
+.p-steps{grid-area:2/1} .p-qa{grid-area:2/2} .p-co{grid-area:2/3}
+.body.page-mode{grid-template-columns:1fr;grid-template-rows:1fr}
+.body.page-mode>.panel{display:none} .body.page-mode>.p-page{display:flex;grid-area:1/1}
+.p-page{display:none}
+
+.fname{padding:12px 14px 4px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.fname h2{margin:0;font-size:24px;letter-spacing:-.02em;color:var(--navy)}
+:root[data-theme="dark"] .fname h2{color:#fff}
+.badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.badge.B{background:var(--grey-soft);color:var(--ink)}
+.badge.A{background:var(--navy);color:#fff;border-color:transparent}
+:root[data-theme="dark"] .badge.A{color:#0A1330}
+.badge.M{background:var(--org);color:#fff;border-color:transparent}
+.ptabs{margin:2px 14px 10px;display:flex;flex-wrap:wrap;gap:6px}
+.ptabs button{border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:4px 12px;font:600 12.5px var(--mono);cursor:pointer;color:var(--ink)}
+.ptabs button[aria-selected="true"]{background:var(--org);border-color:var(--org);color:#fff}
+.ptabs button .n{font-family:var(--sans);font-weight:500;opacity:.7;margin-right:5px}
+.pdesc{margin:0 14px 10px;font-size:13px;line-height:1.45;padding:6px 10px;border-radius:6px;background:var(--org-soft);color:var(--ink)}
+.syn .dim{opacity:.35}
+.does{padding:0 14px 8px;color:var(--muted);font-size:13.5px;line-height:1.45}
+.syn{margin:0 14px 10px;padding:10px 12px;border-radius:8px;background:var(--chip);font:13px/1.6 var(--mono)}
+.syn .fn{color:var(--navy);font-weight:600} :root[data-theme="dark"] .syn .fn{color:#fff}
+.syn .arg{color:var(--org-ink)} .syn .opt{color:var(--grey)}
+.args{margin:0 14px 12px;display:grid;gap:4px;font-size:12.5px}
+.args div{display:grid;grid-template-columns:auto 1fr;gap:8px}
+.args code{color:var(--org-ink);white-space:nowrap}
+.fbar{margin:0 14px 14px;display:flex;align-items:stretch;border:1px solid var(--line);border-radius:6px;overflow:hidden;font:13.5px/1.5 var(--mono)}
+.fbar .nm{padding:6px 8px;background:var(--cellhead);border-right:1px solid var(--line);color:var(--muted);min-width:46px;text-align:center}
+.fbar .fx{padding:6px 8px;color:var(--grey);font-style:italic;border-right:1px solid var(--line);font-family:Georgia,serif}
+.fbar .ftxt{padding:6px 10px;overflow-x:auto;white-space:nowrap;color:var(--black)}
+.r-o,.r-n,.r-g{font-weight:600;border-radius:3px;padding:0 2px}
+.r-o{color:var(--org-ink);background:color-mix(in srgb,var(--hl-o) 16%,transparent);box-shadow:inset 0 -2px 0 var(--hl-o)}
+.r-n{color:var(--hl-n);background:color-mix(in srgb,var(--hl-n) 12%,transparent);box-shadow:inset 0 -2px 0 var(--hl-n)}
+.r-g{color:var(--muted);background:color-mix(in srgb,var(--hl-g) 16%,transparent);box-shadow:inset 0 -2px 0 var(--hl-g)}
+
+/* Worksheet */
+.player{margin-left:auto;display:flex;align-items:center;gap:6px}
+.speed{display:inline-flex;border:1px solid var(--line);border-radius:15px;overflow:hidden;margin-right:4px}
+.speed button{border:0;background:transparent;font-size:11.5px;font-weight:600;color:var(--muted);padding:5px 7px;cursor:pointer}
+.speed button+button{border-left:1px solid var(--line)}
+.speed button[aria-pressed="true"]{background:var(--chip);color:var(--ink)}
+.step-count{font-size:12px;color:var(--muted);min-width:44px;text-align:center;font-weight:500}
+.pbtn{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--panel);cursor:pointer;display:grid;place-items:center;color:var(--ink)}
+.pbtn svg{width:14px;height:14px} .pbtn:disabled{opacity:.35;cursor:default}
+.pbtn.primary{background:var(--org);border-color:var(--org);color:#fff}
+.sheet-wrap{padding:14px;display:flex;flex-direction:column;gap:12px}
+.gridbox{position:relative;align-self:flex-start;max-width:100%;overflow-x:auto}
+table.grid{border-collapse:collapse;font-size:13px;background:var(--cell);color:var(--black)}
+.grid th,.grid td{border:1px solid var(--line);padding:5px 9px;height:28px;white-space:nowrap;min-width:52px}
+.grid th{background:var(--cellhead);color:var(--muted);font-weight:500;font-size:11.5px;text-align:center}
+.grid th.rn{min-width:30px;padding:0 6px}
+.grid td.num{text-align:right;font-variant-numeric:tabular-nums}
+.grid td.hdr{font-weight:600;background:var(--grey-soft)}
+.grid td.hit{background:var(--org-soft)}
+.grid td.hit::after{content:'✓';color:var(--org-ink);font-weight:700;margin-left:6px;font-size:11px}
+.grid td.res{outline:2px solid var(--org);outline-offset:-2px;font-weight:700;color:var(--org-ink);font-family:var(--mono);font-size:12.5px}
+.grid td.res.pending{color:var(--grey);font-weight:400}
+.grid td.spill{background:var(--org-soft);font-weight:600}
+.grid td.copied{color:var(--muted);font-style:italic}
+.grid td.err{color:var(--red);font-weight:700}
+.grid tr.hid td{background:repeating-linear-gradient(135deg,var(--grey-soft) 0 6px,transparent 6px 12px);color:var(--grey);text-decoration:line-through}
+.hl{position:absolute;pointer-events:none;border:2.5px solid;border-radius:2px;transition:all .35s ease}
+.hl.o{border-color:var(--hl-o);background:color-mix(in srgb,var(--hl-o) 10%,transparent)}
+.hl.n{border-color:var(--hl-n);background:color-mix(in srgb,var(--hl-n) 9%,transparent)}
+.hl.g{border-color:var(--hl-g);border-style:dashed;background:color-mix(in srgb,var(--hl-g) 10%,transparent)}
+.hl.sp{border:2px dashed var(--org);background:transparent}
+.chars{display:flex;flex-wrap:wrap;gap:3px}
+.chars span{display:grid;grid-template-rows:auto auto;text-align:center;min-width:24px;border:1px solid var(--line);border-radius:4px;font:13px var(--mono);background:var(--cell);color:var(--black);transition:background .3s}
+.chars span i{font-style:normal;font-size:9.5px;color:var(--muted);border-top:1px solid var(--line);padding:1px 0}
+.chars span b{font-weight:500;padding:3px 0;white-space:pre}
+.chars span.on{background:var(--org);color:#fff;border-color:var(--org)} .chars span.on i{color:#fff}
+.chars span.mk{background:var(--org-soft);border-color:var(--org)}
+.caption{font-size:13.5px;line-height:1.55;padding:10px 12px;border-left:3px solid var(--org);background:var(--chip);border-radius:0 8px 8px 0;min-height:44px}
+.caption b{color:var(--org-ink)}
+
+/* Output */
+.out-card{margin:14px;padding:14px;border-radius:10px;background:var(--navy);color:#fff}
+:root[data-theme="dark"] .out-card{background:var(--navy-deep);border:1px solid var(--line)}
+.out-card .lbl{font-size:12px;opacity:.75}
+.out-card .val{font:600 26px/1.25 var(--mono);color:#fff;margin-top:4px;word-break:break-word}
+.out-card .val.wait{opacity:.4;font-size:18px}
+.out-card .val.err{color:#FF8A80}
+.out-card table{border-collapse:collapse;margin-top:6px;font:13px var(--mono)}
+.out-card td{border:1px solid rgba(255,255,255,.25);padding:3px 8px}
+.out-card .ty{margin-top:8px;font-size:11.5px;color:var(--org)}
+.alts{margin:0 14px 14px}
+.alts h3,.page h3{font-size:13px;margin:4px 0 8px;color:var(--muted);font-weight:600}
+.alt{padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;font-size:12.5px}
+.alt code{display:block;color:var(--navy);font-weight:600;white-space:pre-wrap;word-break:break-word}
+:root[data-theme="dark"] .alt code{color:#fff}
+.alt .ar{color:var(--org-ink);font-family:var(--mono);font-weight:600}
+.alt p{margin:3px 0 0;color:var(--muted)}
+
+/* Steps */
+ol.steps{list-style:none;margin:0;padding:10px 12px;counter-reset:s}
+ol.steps li{counter-increment:s;display:grid;grid-template-columns:24px 1fr;gap:10px;padding:8px;border-radius:8px;cursor:pointer;opacity:.45;font-size:13px;line-height:1.5}
+ol.steps li::before{content:counter(s);width:22px;height:22px;border-radius:50%;background:var(--chip);display:grid;place-items:center;font-size:11.5px;font-weight:700}
+ol.steps li.done{opacity:.8} ol.steps li.done::before{background:var(--navy);color:#fff}
+:root[data-theme="dark"] ol.steps li.done::before{color:#0A1330}
+ol.steps li.cur{opacity:1;background:var(--org-soft)} ol.steps li.cur::before{background:var(--org);color:#fff}
+ol.steps li code.ev{display:block;margin-top:4px;padding:4px 8px;border-radius:5px;background:var(--panel);border:1px solid var(--line);white-space:pre-wrap;word-break:break-word;font-size:12px}
+ol.steps li b{color:var(--org-ink)}
+
+/* Q&A + callouts */
+.qa{padding:8px 10px}
+details.q{border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--panel)}
+details.q summary{cursor:pointer;padding:9px 12px;font-size:13px;font-weight:600;list-style:none;display:flex;gap:8px}
+details.q summary::-webkit-details-marker{display:none}
+details.q summary::before{content:'Q';color:var(--org-ink);font-weight:800}
+details.q[open] summary{border-bottom:1px dashed var(--line)}
+details.q .a{padding:9px 12px 11px;font-size:13px;line-height:1.55;color:var(--ink)}
+.co{list-style:none;margin:0;padding:10px 12px;display:grid;gap:8px}
+.co li{font-size:12.8px;line-height:1.5;padding:9px 10px 9px 12px;border-radius:8px;background:var(--chip);border-left:3px solid var(--navy)}
+.co li.warn{border-left-color:var(--org);background:var(--org-soft)}
+.co li.err{border-left-color:var(--red);background:var(--red-soft)}
+
+/* ---------- Pages ---------- */
+.page{padding:18px 22px 40px;max-width:1200px}
+.page-intro{font-size:14px;color:var(--muted);line-height:1.55;max-width:75ch;margin:0 0 16px}
+.page h2{margin:0 0 6px;font-size:26px;letter-spacing:-.02em;color:var(--navy)}
+:root[data-theme="dark"] .page h2{color:#fff}
+.tabhead{display:flex;align-items:center;gap:10px;margin:22px 0 10px}
+.tabhead span{font-weight:700;font-size:15px;padding:4px 12px;border-radius:6px;background:var(--navy);color:#fff}
+:root[data-theme="dark"] .tabhead span{color:#0A1330}
+.tabhead i{flex:1;height:1px;background:var(--line)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px}
+.card{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--panel);display:flex;flex-direction:column;gap:8px}
+.card h4{margin:0;font-size:14.5px;display:flex;gap:8px;align-items:center}
+.card h4 .badge{margin-left:auto}
+.card p{margin:0;font-size:13px;line-height:1.5;color:var(--muted)}
+.path{display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:12px}
+.path span{padding:3px 8px;border-radius:5px;background:var(--chip);border:1px solid var(--line)}
+.path span:first-child{background:var(--navy);color:#fff;border-color:var(--navy)}
+:root[data-theme="dark"] .path span:first-child{color:#0A1330}
+.path em{color:var(--grey);font-style:normal}
+kbd.k{display:inline-block;font:600 11.5px var(--mono);padding:2px 6px;border-radius:5px;border:1px solid var(--line);border-bottom-width:2px;background:var(--cell);color:var(--black);white-space:nowrap}
+.kline{display:flex;flex-wrap:wrap;gap:3px;align-items:center}
+.kline small{color:var(--grey);margin:0 2px}
+.ba{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:stretch;font-size:12.5px}
+.ba div{border-radius:8px;padding:8px 10px;font-family:var(--mono);white-space:pre-wrap;line-height:1.5}
+.ba .b{background:var(--grey-soft);color:var(--muted)} .ba .a{background:var(--org-soft);color:var(--ink);border:1px solid color-mix(in srgb,var(--org) 40%,transparent)}
+.ba svg{align-self:center;width:18px;height:18px;color:var(--org)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:18px;overflow:hidden;margin:6px 0 4px}
+.seg button{border:0;background:transparent;cursor:pointer;padding:6px 14px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--navy);color:#fff}
+:root[data-theme="dark"] .seg button[aria-pressed="true"]{color:#0A1330}
+.sc-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table.sc{border-collapse:collapse;width:100%;font-size:13px}
+.sc th{position:sticky;top:0;text-align:left;background:var(--navy);color:#fff;padding:9px 12px;font-weight:600}
+:root[data-theme="dark"] .sc th{color:#0A1330}
+.sc td{padding:8px 12px;border-top:1px solid var(--line);vertical-align:top}
+.sc tr.grp td{background:var(--chip);font-weight:700;color:var(--org-ink);font-size:12px}
+.sc td:first-child{min-width:220px}
+.sc .col-hide{display:none}
+.notes{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin-top:14px}
+.rel{border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px;background:var(--panel)}
+.rel.gone{background:var(--grey-soft)}
+.rel h4{margin:0;font-size:15px}
+.rel .when{font-size:12px;color:var(--muted)}
+.rel code.ex{display:block;padding:7px 10px;border-radius:6px;background:var(--chip);white-space:pre-wrap;word-break:break-word;font-size:12.5px}
+.pill{align-self:flex-start;font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px}
+.pill.ga{background:var(--navy);color:#fff} :root[data-theme="dark"] .pill.ga{color:#0A1330}
+.pill.pv{background:var(--org);color:#fff}
+.pill.rt{background:var(--red);color:#fff}
+.iq-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:8px}
+.foot{margin-top:24px;font-size:12px;color:var(--muted)}
+
+@media (max-width: 1100px){
+  body{overflow:auto;height:auto}
+  .app{height:auto}
+  .main{grid-template-columns:1fr}
+  .side .panel-body{max-height:40vh}
+  .body{grid-template-columns:1fr;grid-template-rows:none}
+  .body>.panel{grid-area:auto!important;max-height:none}
+  .body .panel-body{overflow:visible}
+  .body.page-mode>.p-page{grid-area:auto}
+  header{grid-template-columns:auto 1fr auto;row-gap:8px}
+  .search{grid-column:1/-1;width:100%;order:3}
+  .iq-grid{grid-template-columns:1fr}
+  .panel-head{flex-wrap:wrap}
+  .player{margin-left:0;width:100%;justify-content:flex-end}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <span class="brand" role="img" aria-label="GK">GK</span>
+    <h1>Visualized Excel<small>Basic → Advanced</small></h1>
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input type="search" id="search" placeholder="Search functions & topics" aria-label="Search functions and topics" autocomplete="off">
+      <kbd aria-hidden="true">/</kbd>
+    </div>
+    <button class="theme-btn" id="themeBtn" aria-label="Switch to dark theme"></button>
+  </header>
+
+  <div class="main">
+    <aside class="panel side" aria-label="Topics">
+      <div class="panel-head">Topics<span class="hint" id="totalHint"></span></div>
+      <div class="panel-body"><nav id="nav"></nav><p class="nomatch" id="nomatch" hidden>Nothing matches your search. Try a function name like VLOOKUP.</p></div>
+    </aside>
+
+    <div class="body" id="body">
+      <section class="panel p-formula" aria-label="Formula">
+        <div class="panel-head">Formula<span class="hint" id="catHint"></span></div>
+        <div class="panel-body" id="formula"></div>
+      </section>
+      <section class="panel p-sheet" aria-label="Worksheet">
+        <div class="panel-head">
+          Worksheet
+          <div class="player">
+            <div class="speed" role="group" aria-label="Autoplay speed">
+              <button data-ms="4200">Slow</button><button data-ms="2600" aria-pressed="true">Normal</button><button data-ms="1300">Fast</button>
+            </div>
+            <span class="step-count" id="stepCount"></span>
+            <button class="pbtn" id="prevBtn" aria-label="Previous step"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg></button>
+            <button class="pbtn primary" id="playBtn" aria-label="Play"></button>
+            <button class="pbtn" id="nextBtn" aria-label="Next step"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>
+          </div>
+        </div>
+        <div class="panel-body"><div class="sheet-wrap" id="sheet"></div></div>
+      </section>
+      <section class="panel p-output" aria-label="Output">
+        <div class="panel-head">Output</div>
+        <div class="panel-body" id="output"></div>
+      </section>
+      <section class="panel p-steps" aria-label="Step by step">
+        <div class="panel-head">Step by step<span class="hint">Like Formulas ▸ Evaluate Formula</span></div>
+        <div class="panel-body" id="steps"></div>
+      </section>
+      <section class="panel p-qa" aria-label="Interview questions">
+        <div class="panel-head">Interview questions<span class="hint">Click a question to see the answer</span></div>
+        <div class="panel-body" id="qa"></div>
+      </section>
+      <section class="panel p-co" aria-label="Call-outs">
+        <div class="panel-head">Call-outs</div>
+        <div class="panel-body" id="co"></div>
+      </section>
+      <section class="panel p-page" aria-label="Guide">
+        <div class="panel-body" id="page"></div>
+      </section>
+    </div>
+  </div>
+  <footer class="site-foot">Built by Gopikrishna | <a href="mailto:gkrishna.ai.lab@gmail.com">gkrishna.ai.lab@gmail.com</a></footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/* ---------- Theme ---------- */
+const SUN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>';
+const MOON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7z"/></svg>';
+const PLAY='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg>';
+const PAUSE='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>';
+const ARROW='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>';
+let theme='light';
+function applyTheme(t){
+  document.documentElement.dataset.theme=t;
+  $('themeBtn').innerHTML = t==='dark'?SUN:MOON;
+  $('themeBtn').setAttribute('aria-label', t==='dark'?'Switch to light theme':'Switch to dark theme');
+  requestAnimationFrame(drawHL);
+}
+$('themeBtn').addEventListener('click',()=>{ theme = theme==='dark'?'light':'dark'; applyTheme(theme); });
+
+/* ---------- Content registries ---------- */
+const CATS=[];      // {id,name,sub,type:'fn'|'page'}
+const FN=[];        // function entries
+const PAGES={};     // id -> render()
+function CAT(id,name,sub,type='fn'){ CATS.push({id,name,sub,type}); }
+function F(o){ o.id='f'+FN.length; FN.push(o); }
+</script>
+<script>
+CAT('count','Count','How many cells?');
+CAT('sum','Sum','Add it up');
+CAT('avg','Average','Find the middle ground');
+CAT('logic','Logical & IF','Make decisions');
+CAT('lookup','Lookup & Reference','Find and fetch');
+CAT('num','Numbers & Math','Round, rank, random');
+CAT('date','Date & Time','Days, months, work days');
+CAT('text','Text','Split, join, clean');
+CAT('find','Find & Replace','Locate and swap');
+CAT('stat','Statistical','Spread and relationships');
+CAT('dyn','Dynamic Arrays','Microsoft 365 spill formulas');
+CAT('attributes','Attributes','Features by ribbon tab','page');
+CAT('tips','Tricks & Tips','Work faster, avoid traps','page');
+CAT('shortcuts','Shortcuts','Windows · MacBook · iMac','page');
+CAT('releases','New releases','Beyond your version','page');
+CAT('interview','Interview questions','Basic → scenario','page');
+
+/* ============ COUNT ============ */
+F({n:'COUNT · COUNTA · COUNTBLANK', cat:'count', lvl:'B', keys:'count counta countblank',
+ does:'COUNT counts cells holding <b>numbers</b>. COUNTA counts cells that are <b>not empty</b>. COUNTBLANK counts <b>empty</b> cells.',
+ syn:'COUNT(value1, [value2], …) | COUNTA(value1, [value2], …) | COUNTBLANK(range)',
+ args:[['value1','A range such as B2:B7, or individual values'],['range','The cells to check for blanks']],
+ g:[['City','Area','','Result'],['Guwahati',5644,'','COUNT'],['Silchar',6214,'','COUNTA'],['Jorhat','NA','','COUNTBLANK'],['Tezpur',''],['Patna',8037],['Gaya',0]],
+ at:'E2', f:'=COUNT(B2:B7)', out:'4', ty:'Number', fill:{E3:'5',E4:'1'},
+ steps:[
+  ['B2:B7','Excel looks at the range <b>B2:B7</b> — six cells in the Area column.','=COUNT(B2:B7)'],
+  ['B2:B7 !B2 !B3 !B6 !B7','Only cells holding numbers are counted: 5644, 6214, 8037 and <b>0</b> (zero is a number too).','=COUNT({5644;6214;"NA";"";8037;0})'],
+  ['B2:B7 B4~g B5~g','<b>"NA"</b> is text and <b>B5</b> is empty, so COUNT skips both.','=COUNT({5644;6214;8037;0})'],
+  ['','Result: <b>4</b>. The copied-down cells show COUNTA = 5 (every non-empty cell) and COUNTBLANK = 1 (only B5).','=4']],
+ alt:[['=COUNTA(B2:B7)','5','Counts "NA" and 0 as well — anything that is not empty.'],['=COUNTBLANK(B2:B7)','1','Only B5. A cell containing ="" also counts as blank.'],['=COUNTA(A2:A7)','6','Count the cities — the classic "how many records?"']],
+ qa:[['What is the difference between COUNT and COUNTA?','COUNT counts only numeric values (numbers, dates, times). COUNTA counts every non-empty cell — numbers, text, logical values and errors.'],
+     ['Why does COUNT return 0 on a column of names?','Names are text. COUNT ignores text, so use COUNTA to count text entries.'],
+     ['Does COUNTBLANK count a cell with a space?','No. A space is a character, so the cell is not blank. It does count cells containing an empty string "" returned by a formula.']],
+ co:['Dates are stored as numbers, so COUNT counts them.','!A number typed as text (left-aligned, green triangle) is ignored by COUNT — convert it with VALUE or Paste Special ▸ Multiply by 1.','Quick check without a formula: select the range and read Count / Numerical Count on the status bar.']});
+
+F({n:'COUNTIF', cat:'count', lvl:'B', keys:'criteria wildcard',
+ does:'Counts the cells in a range that meet <b>one condition</b>.',
+ syn:'COUNTIF(range, criteria)',
+ args:[['range','Cells to test'],['criteria','The condition: "High", ">50", "<>High", "P*"']],
+ g:[['City','Density','','Density','Cities'],['Guwahati','High','','High',''],['Silchar','Low'],['Jorhat','High'],['Tezpur','Medium'],['Patna','Low'],['Purnia','High']],
+ at:'E2', f:'=COUNTIF(B2:B7,D2)', out:'3', ty:'Number',
+ steps:[
+  ['B2:B7','The <b>range</b> B2:B7 holds the density of each city.','=COUNTIF(B2:B7,D2)'],
+  ['B2:B7 D2','The <b>criteria</b> comes from D2: "High". Using a cell instead of typing "High" lets you change it later.','=COUNTIF(B2:B7,"High")'],
+  ['B2:B7 !B2 !B4 !B7','Each cell is compared with "High". Guwahati, Jorhat and Purnia match (the test ignores upper/lower case).','=COUNTIF({"High";"Low";"High";"Medium";"Low";"High"},"High")'],
+  ['','Three matches, so the result is <b>3</b>.','=3']],
+ alt:[['=COUNTIF(B2:B7,"<>High")','3','Not equal to High.'],['=COUNTIF(A2:A7,"P*")','2','Wildcard: cities starting with P (Patna, Purnia). ? = one character.'],['=COUNTIF(B2:B7,"*")','6','Any text at all.'],['=COUNTIF(A:A,A2)>1','FALSE','Classic duplicate check — TRUE when a value appears more than once.']],
+ qa:[['How do you count cells greater than a value stored in a cell?','Join the operator and the cell with &: =COUNTIF(C2:C50,">"&F1). Writing ">F1" in quotes would look for the text F1.'],
+     ['Is COUNTIF case-sensitive?','No. "HIGH", "high" and "High" all match. For a case-sensitive count use SUMPRODUCT(--EXACT(range,"High")).'],
+     ['How do you find duplicates with COUNTIF?','=COUNTIF($A$2:$A$100,A2)>1 returns TRUE for every value that appears more than once; it also works as a conditional-formatting rule.']],
+ co:['Criteria with an operator must be in quotes: ">50", "<=100", "<>Done".','!COUNTIF only accepts a range, not an array returned by another function — use SUMPRODUCT or COUNT(FILTER(…)) for those cases.','Wildcards: * any characters, ? one character, ~* a real asterisk.']});
+
+F({n:'COUNTIFS', cat:'count', lvl:'A', keys:'multiple criteria',
+ does:'Counts rows that meet <b>several conditions at once</b> (AND logic).',
+ syn:'COUNTIFS(criteria_range1, criteria1, [criteria_range2, criteria2], …)',
+ args:[['criteria_range1','First column to test'],['criteria1','Condition for that column'],['…','Up to 127 range / criteria pairs']],
+ g:[['City','Density','Month','','Result'],['Guwahati','High','Mar'],['Silchar','Low','Mar'],['Jorhat','High','Apr'],['Tezpur','High','Mar'],['Patna','Low','Apr'],['Purnia','High','Apr']],
+ at:'E2', f:'=COUNTIFS(B2:B7,"High",C2:C7,"Mar")', out:'2', ty:'Number',
+ steps:[
+  ['B2:B7','First pair: which rows have Density = "High"?','=COUNTIFS(B2:B7,"High",C2:C7,"Mar")'],
+  ['B2:B7 !B2 !B4 !B5 !B7','Rows 2, 4, 5 and 7 pass the first test.','{TRUE;FALSE;TRUE;TRUE;FALSE;TRUE}'],
+  ['C2:C7 !C2 !C3 !C5','Second pair: which rows have Month = "Mar"? Rows 2, 3 and 5.','{TRUE;TRUE;FALSE;TRUE;FALSE;FALSE}'],
+  ['A2:C2 A5:C5','A row is counted only when <b>both</b> tests are TRUE: Guwahati and Tezpur.','{1;0;0;1;0;0}'],
+  ['','1 + 1 = <b>2</b> cities are High density with a March target.','=2']],
+ alt:[['=COUNTIFS(C2:C7,"Apr")','3','One pair works like COUNTIF.'],['=COUNTIFS(B2:B7,"High",C2:C7,"<>Mar")','2','Mix = and <> conditions.'],['=SUM(COUNTIFS(B2:B7,{"High","Low"}))','6','OR logic: High OR Low, using an array constant.']],
+ qa:[['COUNTIFS uses AND logic. How do you count with OR?','Add two COUNTIFs, or pass an array constant and wrap in SUM: =SUM(COUNTIFS(B:B,{"High","Medium"})).'],
+     ['What error do you get if the ranges have different sizes?','#VALUE!. Every criteria range must have the same number of rows and columns.'],
+     ['How do you count between two dates?','=COUNTIFS(D:D,">="&F1,D:D,"<="&G1) — the same column used twice with two conditions.']],
+ co:['All criteria ranges must be exactly the same size.','Your workbook uses this pattern in Count!O5 for the month × density table.','!Use $ on the ranges ($D:$D) before copying the formula across a summary table.']});
+
+/* ============ SUM ============ */
+F({n:'SUM', cat:'sum', lvl:'B', keys:'autosum total add',
+ does:'Adds numbers, ranges or both. Text and blank cells are ignored.',
+ syn:'SUM(number1, [number2], …)',
+ args:[['number1','A number, cell or range'],['[number2]','More values or ranges (up to 255)']],
+ g:[['Product','Sales','','Total'],['Cheese',20181],['Butter',26157],['Bread',36478],['Milk',43312]],
+ at:'D2', f:'=SUM(B2:B5)', out:'126128', ty:'Number',
+ steps:[
+  ['B2:B5','Excel collects the numbers in <b>B2:B5</b>.','=SUM(B2:B5)'],
+  ['B2:B3','Adds them one by one: 20181 + 26157 = 46338 …','=SUM({20181;26157;36478;43312})'],
+  ['B2:B5','… + 36478 + 43312.','=20181+26157+36478+43312'],
+  ['','Total sales: <b>126128</b>.','=126128']],
+ alt:[['=SUM(B2:B3,B5)','89650','Several separate ranges.'],['=SUM(B:B)','126128','A whole column — convenient, but keep totals out of that column.'],['Alt + =  (⌘⇧T on Mac)','AutoSum','Inserts =SUM() for the block above automatically.']],
+ qa:[['What happens if SUM meets a number stored as text?','It is ignored silently, so the total is too small. Watch for left-aligned numbers and the green error triangle.'],
+     ['What is the difference between =A1+A2 and =SUM(A1:A2)?','The + operator returns #VALUE! if a cell holds text; SUM simply skips text. SUM is also easier to extend.'],
+     ['How do you sum only visible (filtered) rows?','Use SUBTOTAL(9,range) or AGGREGATE(9,5,range) instead of SUM.']],
+ co:['Keyboard: Alt + = (Windows) · ⌘ ⇧ T (Mac) inserts AutoSum.','!SUM ignores text; the + operator does not. Choose deliberately.','Select a range and read the Sum on the status bar for a quick check.']});
+
+F({n:'SUMIF', cat:'sum', lvl:'B',
+ does:'Adds the values that meet <b>one condition</b>.',
+ syn:'SUMIF(range, criteria, [sum_range])',
+ args:[['range','Cells tested against the criteria'],['criteria','The condition'],['[sum_range]','Cells to add (defaults to range)']],
+ g:[['Product','Month','Sales','','Cheese total'],['Cheese','Jan',20181],['Butter','Jan',26157],['Cheese','Feb',42193],['Butter','Feb',47177],['Cheese','Mar',36810]],
+ at:'E2', f:'=SUMIF(A2:A6,"Cheese",C2:C6)', out:'99184', ty:'Number',
+ steps:[
+  ['A2:A6','The <b>range</b> A2:A6 is checked for "Cheese".','=SUMIF(A2:A6,"Cheese",C2:C6)'],
+  ['A2:A6 !A2 !A4 !A6','Rows 2, 4 and 6 match.','{TRUE;FALSE;TRUE;FALSE;TRUE}'],
+  ['C2:C6 !C2 !C4 !C6','From the <b>sum_range</b> C2:C6, only the matching rows are picked: 20181, 42193, 36810.','=20181+42193+36810'],
+  ['','Cheese sales for the quarter: <b>99184</b>.','=99184']],
+ alt:[['=SUMIF(C2:C6,">30000")','126180','No sum_range: tests and adds the same cells.'],['=SUMIF(B2:B6,"Jan",C2:C6)','46338','Month-wise total (your Sum!L5).']],
+ qa:[['What if sum_range is a different size from range?','Excel resizes sum_range to match range starting from its top-left cell — a silent source of wrong totals. Keep them identical.'],
+     ['Where does sum_range go in SUMIF vs SUMIFS?','Last in SUMIF, first in SUMIFS — a favourite interview trap.']],
+ co:['Criteria accept wildcards: "Che*".','!Keep range and sum_range the same size; Excel does not warn you.']});
+
+F({n:'SUMIFS', cat:'sum', lvl:'A',
+ does:'Adds values that meet <b>several conditions</b> (AND logic).',
+ syn:'SUMIFS(sum_range, criteria_range1, criteria1, …)',
+ args:[['sum_range','Cells to add — FIRST argument'],['criteria_range1, criteria1','Pairs of range + condition']],
+ g:[['Product','Month','Sales','','Butter · Feb'],['Cheese','Jan',20181],['Butter','Jan',26157],['Cheese','Feb',42193],['Butter','Feb',47177],['Cheese','Mar',36810]],
+ at:'E2', f:'=SUMIFS(C2:C6,A2:A6,"Butter",B2:B6,"Feb")', out:'47177', ty:'Number',
+ steps:[
+  ['C2:C6','SUMIFS starts with the <b>sum_range</b> C2:C6.','=SUMIFS(C2:C6,A2:A6,"Butter",B2:B6,"Feb")'],
+  ['A2:A6 !A3 !A5','Condition 1: Product = "Butter" → rows 3 and 5.','{0;1;0;1;0}'],
+  ['B2:B6 !B4 !B5','Condition 2: Month = "Feb" → rows 4 and 5.','{0;0;1;1;0}'],
+  ['C5 !C5','Only row 5 passes both, so only C5 is added.','=47177'],
+  ['','Butter sales in February: <b>47177</b>.','=47177']],
+ alt:[['=SUMIFS(C2:C6,A2:A6,"Cheese",B2:B6,"<>Jan")','79003','Cheese, excluding January.'],['=SUMIFS($C:$C,$A:$A,$E5,$B:$B,F$4)','—','Mixed references build a product × month grid in one copy (your Sum sheet).']],
+ qa:[['Why prefer SUMIFS even for one condition?','Its argument order stays the same however many conditions you add, so formulas are easier to extend and audit.'],
+     ['How do you sum between two dates?','=SUMIFS(Sales,Date,">="&Start,Date,"<="&End).']],
+ co:['sum_range comes first — the opposite of SUMIF.','!All ranges must be the same size, otherwise #VALUE!.']});
+
+/* ============ AVERAGE ============ */
+F({n:'AVERAGE', cat:'avg', lvl:'B', keys:'mean',
+ does:'Returns the arithmetic mean: total ÷ count of numbers.',
+ syn:'AVERAGE(number1, [number2], …)',
+ g:[['Student','Score','','Average'],['Satish',25],['Sridhar',88],['Mallesh',48],['Bhanu',37],['Sireesha',61]],
+ at:'D2', f:'=AVERAGE(B2:B6)', out:'51.8', ty:'Number',
+ steps:[
+  ['B2:B6','Excel takes the five scores in <b>B2:B6</b>.','=AVERAGE(B2:B6)'],
+  ['B2:B6','Adds them: 25 + 88 + 48 + 37 + 61 = 259.','=259/COUNT(B2:B6)'],
+  ['B2:B6','Counts the numbers: 5.','=259/5'],
+  ['','259 ÷ 5 = <b>51.8</b>.','=51.8']],
+ alt:[['=AVERAGE(B2:B6,100)','59.83','Extra values can be added.'],['=AVERAGEA(B2:B6)','51.8','AVERAGEA also counts text as 0 and TRUE as 1.']],
+ qa:[['Does AVERAGE include zeros and blanks?','Zeros yes, blanks no. A blank cell does not change the average; a 0 pulls it down.'],
+     ['Mean vs median — when is median better?','When data has extreme values (salaries, house prices). The median is the middle value and is not dragged by outliers.']],
+ co:['!Blank ≠ zero: a 0 typed for "not taken" lowers the average.','For outliers, compare with MEDIAN (Statistical section).']});
+
+F({n:'AVERAGEIF', cat:'avg', lvl:'B',
+ does:'Averages the values that meet <b>one condition</b>.',
+ syn:'AVERAGEIF(range, criteria, [average_range])',
+ g:[['Student','Class','Score','','Class A avg'],['Satish','A',25],['Sridhar','B',88],['Mallesh','A',48],['Bhanu','B',37],['Sireesha','A',61]],
+ at:'E2', f:'=AVERAGEIF(B2:B6,"A",C2:C6)', out:'44.67', ty:'Number (formatted to 2 decimals)',
+ steps:[
+  ['B2:B6','Which students are in class "A"?','=AVERAGEIF(B2:B6,"A",C2:C6)'],
+  ['B2:B6 !B2 !B4 !B6','Rows 2, 4 and 6.','{TRUE;FALSE;TRUE;FALSE;TRUE}'],
+  ['C2:C6 !C2 !C4 !C6','Their scores: 25, 48, 61 → total 134.','=(25+48+61)/3'],
+  ['','134 ÷ 3 = <b>44.67</b>.','=44.6667']],
+ alt:[['=AVERAGEIF(C2:C6,">40")','65.67','Average of scores above 40.'],['=IFERROR(AVERAGEIF(B2:B6,"C",C2:C6),0)','0','No class C → #DIV/0!, caught by IFERROR.']],
+ qa:[['What does AVERAGEIF return when nothing matches?','#DIV/0!, because it divides by a count of zero. Wrap it in IFERROR.']],
+ co:['!No matches → #DIV/0!.','Like SUMIF, the range to average comes last.']});
+
+F({n:'AVERAGEIFS', cat:'avg', lvl:'A',
+ does:'Averages values that meet <b>several conditions</b>.',
+ syn:'AVERAGEIFS(average_range, criteria_range1, criteria1, …)',
+ g:[['Student','Class','Score','','A & >30'],['Satish','A',25],['Sridhar','B',88],['Mallesh','A',48],['Bhanu','B',37],['Sireesha','A',61]],
+ at:'E2', f:'=AVERAGEIFS(C2:C6,B2:B6,"A",C2:C6,">30")', out:'54.5', ty:'Number',
+ steps:[
+  ['C2:C6','average_range comes <b>first</b>: C2:C6.','=AVERAGEIFS(C2:C6,B2:B6,"A",C2:C6,">30")'],
+  ['B2:B6 !B2 !B4 !B6','Condition 1: Class = "A" → rows 2, 4, 6.','{1;0;1;0;1}'],
+  ['C2:C6 !C3 !C4 !C5 !C6','Condition 2: Score > 30 → rows 3–6 (Satish scored 25).','{0;1;1;1;1}'],
+  ['C4 C6','Both true: Mallesh 48 and Sireesha 61.','=(48+61)/2'],
+  ['','<b>54.5</b>','=54.5']],
+ qa:[['Can the same column be both a criteria range and the average range?','Yes — here C2:C6 is averaged and also tested for >30.']],
+ co:['The same range can appear twice with different conditions (between two values).']});
+
+/* ============ LOGICAL ============ */
+F({n:'IF', cat:'logic', lvl:'B',
+ does:'Tests a condition and returns one value if TRUE, another if FALSE.',
+ syn:'IF(logical_test, value_if_true, [value_if_false])',
+ args:[['logical_test','Anything that is TRUE or FALSE: B2>=35'],['value_if_true','Result when TRUE'],['value_if_false','Result when FALSE']],
+ g:[['Student','English','Status'],['Satish',25,''],['Sridhar',88],['Mallesh',48]],
+ at:'C2', f:'=IF(B2>=35,"Pass","Fail")', out:'Fail', ty:'Text', fill:{C3:'Pass',C4:'Pass'},
+ steps:[
+  ['B2','Read the value in <b>B2</b>: 25.','=IF(25>=35,"Pass","Fail")'],
+  ['B2','Evaluate the test: is 25 ≥ 35? <b>FALSE</b>.','=IF(FALSE,"Pass","Fail")'],
+  ['','FALSE → Excel returns the third argument, <b>"Fail"</b>. Copied down, Sridhar and Mallesh get "Pass".','="Fail"']],
+ alt:[['=IF(B2="","Absent",IF(B2>=35,"Pass","Fail"))','Fail','Handle blanks first.'],['=IF(B2>=35,1,0)','0','Return numbers to sum later.']],
+ qa:[['What does IF return if value_if_false is omitted and the test is FALSE?','The logical value FALSE.'],
+     ['How do you test for an empty cell?','=IF(A1="", …) or =IF(ISBLANK(A1), …). A1="" also treats a formula returning "" as empty.'],
+     ['How many IFs can be nested?','64 — but more than three usually means IFS, a lookup table or SWITCH is a better choice.']],
+ co:['Text results need quotes; numbers do not.','!=IF(B2>=35,"Pass") with no third argument shows FALSE for failures.','Your workbook: IF (And, Or) sheet, column F.']});
+
+F({n:'AND · OR', cat:'logic', lvl:'B', keys:'and or logical',
+ does:'AND is TRUE only when <b>all</b> tests are TRUE. OR is TRUE when <b>any</b> test is TRUE.',
+ syn:'AND(logical1, [logical2], …) | OR(logical1, [logical2], …)',
+ g:[['Student','English','Maths','Both ≥35?','Any ≥35?'],['Satish',25,82,'','']],
+ at:'D2', f:'=AND(B2>=35,C2>=35)', out:'FALSE', ty:'Logical', fill:{E2:'TRUE'},
+ steps:[
+  ['B2','Test 1: English 25 ≥ 35 → <b>FALSE</b>.','=AND(FALSE,C2>=35)'],
+  ['C2','Test 2: Maths 82 ≥ 35 → <b>TRUE</b>.','=AND(FALSE,TRUE)'],
+  ['','AND needs every test TRUE → <b>FALSE</b>. OR in E2 needs just one → TRUE.','=FALSE']],
+ alt:[['=OR(B2>=35,C2>=35)','TRUE','Any one condition.'],['=IF(AND(B2>=35,C2>=35),"Pass","Fail")','Fail','Most common use: inside IF.'],['=(B2>=35)*(C2>=35)','0','Array-friendly AND: TRUE×TRUE = 1.']],
+ qa:[['How do you write "pass in all subjects" with OR?','Check for any failure and invert: =IF(OR(B2<35,C2<35),"Fail","Pass") — this is what your IF sheet does.'],
+     ['What is XOR?','TRUE when an odd number of tests are TRUE — for two tests, exactly one.']],
+ co:['Multiply for AND and add for OR inside array formulas: (A)*(B), (A)+(B).','!AND/OR return a single value — they do not work row-by-row inside FILTER; use * and + there.']});
+
+F({n:'Nested IF', cat:'logic', lvl:'A', keys:'grade',
+ does:'One IF inside another to handle more than two outcomes. Conditions are checked in order; the first TRUE wins.',
+ syn:'IF(test1, value1, IF(test2, value2, IF(test3, value3, else)))',
+ g:[['Student','Percent','Grade'],['Mallesh',76,'']],
+ at:'C2', f:'=IF(B2>=90,"A+",IF(B2>=75,"A",IF(B2>=60,"B","C")))', out:'A', ty:'Text',
+ steps:[
+  ['B2','First test: 76 ≥ 90? <b>FALSE</b> → move to the inner IF.','=IF(FALSE,"A+",IF(B2>=75,"A",…))'],
+  ['B2','Second test: 76 ≥ 75? <b>TRUE</b>.','=IF(TRUE,"A",IF(B2>=60,"B","C"))'],
+  ['','The first TRUE wins, so the remaining tests are never checked. Result <b>"A"</b>.','="A"']],
+ alt:[['=IFS(B2>=90,"A+",B2>=75,"A",B2>=60,"B",TRUE,"C")','A','Same logic, flatter (Excel 2019+).'],['=LOOKUP(B2,{0,60,75,90},{"C","B","A","A+"})','A','A lookup band is easiest to maintain.']],
+ qa:[['Why must you start from the highest band?','If you test B2>=60 first, a 95 would stop there and get "B".'],
+     ['What is a cleaner alternative to deep nesting?','IFS, SWITCH, or an approximate-match lookup against a small band table.']],
+ co:['!Order matters: highest threshold first when using ≥.','Count the closing brackets — one per IF.']});
+
+F({n:'IFS', cat:'logic', lvl:'A', keys:'ifs switch',
+ does:'Checks conditions in pairs and returns the value for the first TRUE one. No nesting needed.',
+ syn:'IFS(test1, value1, [test2, value2], …)',
+ g:[['Student','Percent','Grade'],['Mallesh',76,'']],
+ at:'C2', f:'=IFS(B2>=90,"A+",B2>=75,"A",B2>=60,"B",TRUE,"C")', out:'A', ty:'Text',
+ steps:[
+  ['B2','Pair 1: 76 ≥ 90 → FALSE.','=IFS(FALSE,"A+",B2>=75,"A",…)'],
+  ['B2','Pair 2: 76 ≥ 75 → TRUE.','=IFS(FALSE,"A+",TRUE,"A",…)'],
+  ['','Returns the value paired with the first TRUE: <b>"A"</b>.','="A"']],
+ alt:[['=SWITCH(D2,"N","North","S","South","Other")','—','SWITCH matches exact values instead of tests.']],
+ qa:[['What does IFS return if no test is TRUE?','#N/A. Add a final TRUE,"value" pair as the "else".']],
+ co:['!No built-in else — finish with TRUE, "…".','Available in Excel 2019, 2021, 2024 and Microsoft 365.']});
+
+F({n:'IFERROR', cat:'logic', lvl:'A',
+ does:'Returns your own value when a formula results in <b>any</b> error.',
+ syn:'IFERROR(value, value_if_error)',
+ g:[['Revenue','Units','Price/unit'],[12000,0,'']],
+ at:'C2', f:'=IFERROR(A2/B2,"Not sold")', out:'Not sold', ty:'Text',
+ steps:[
+  ['A2 B2','Excel first calculates the <b>value</b>: 12000 ÷ 0.','=IFERROR(12000/0,"Not sold")'],
+  ['B2','Division by zero produces the error <b>#DIV/0!</b>.','=IFERROR(#DIV/0!,"Not sold")','#DIV/0!'],
+  ['','Because the value is an error, IFERROR returns the second argument: <b>"Not sold"</b>.','="Not sold"']],
+ alt:[['=IFERROR(VLOOKUP(E2,A:C,2,0),"—")','—','Common, but hides typos too.']],
+ qa:[['Why can IFERROR be dangerous?','It hides every error, including real mistakes like #REF! or a misspelled function name (#NAME?). Prefer IFNA for lookups.'],
+     ['Which errors does IFERROR catch?','#N/A, #VALUE!, #REF!, #DIV/0!, #NUM!, #NAME?, #NULL!, #SPILL!, #CALC!.']],
+ co:['×Wrap only the part that can fail, not the whole formula.','!Use IFNA when "not found" is the only expected error.']});
+
+F({n:'IFNA', cat:'logic', lvl:'A',
+ does:'Returns your own value only when the result is <b>#N/A</b> (not found). Other errors still show.',
+ syn:'IFNA(value, value_if_na)',
+ g:[['Name','Marks','','Find','Marks'],['Sridhar',88,'','Pooja',''],['Bhanu',37],['Rani',79]],
+ at:'E2', f:'=IFNA(VLOOKUP(D2,A2:B4,2,0),"Not in list")', out:'Not in list', ty:'Text',
+ steps:[
+  ['D2 A2:B4','VLOOKUP searches for "Pooja" in the first column of A2:B4.','=IFNA(VLOOKUP("Pooja",A2:B4,2,0),"Not in list")'],
+  ['A2:A4','No row matches, so VLOOKUP returns <b>#N/A</b>.','=IFNA(#N/A,"Not in list")','#N/A'],
+  ['','IFNA replaces only #N/A → <b>"Not in list"</b>.','="Not in list"']],
+ qa:[['IFNA vs IFERROR — which for lookups?','IFNA. A missing value (#N/A) is expected; a #REF! from a wrong column number is a real bug you want to see.']],
+ co:['Safer than IFERROR for lookups.','XLOOKUP has this built in: its 4th argument is "if not found".']});
+
+F({n:'MINIFS · MAXIFS', cat:'logic', lvl:'A', keys:'min if max if',
+ does:'Smallest (MINIFS) or largest (MAXIFS) value among rows that meet conditions.',
+ syn:'MINIFS(min_range, criteria_range1, criteria1, …) | MAXIFS(max_range, criteria_range1, criteria1, …)',
+ g:[['Region','Value','','India min'],['India',661],['India',3551],['Brazil',899],['India',1797],['Brazil',4614]],
+ at:'D2', f:'=MINIFS(B2:B6,A2:A6,"India")', out:'661', ty:'Number',
+ steps:[
+  ['B2:B6','min_range first: the values in B2:B6.','=MINIFS(B2:B6,A2:A6,"India")'],
+  ['A2:A6 !A2 !A3 !A5','Rows where Region = "India": 2, 3 and 5.','{TRUE;TRUE;FALSE;TRUE;FALSE}'],
+  ['B2 B3 B5','Candidates: 661, 3551, 1797.','=MIN(661,3551,1797)'],
+  ['','Smallest: <b>661</b>.','=661']],
+ alt:[['=MAXIFS(B2:B6,A2:A6,"India")','3551',''],['=MIN(IF(A2:A6="India",B2:B6))','661','Older array method (your Minif, maxif sheet).']],
+ qa:[['How did people do MINIFS before Excel 2019?','An array formula =MIN(IF(range=crit,values)) confirmed with Ctrl+Shift+Enter.']],
+ co:['Returns 0 (not an error) when nothing matches — check with COUNTIFS first.']});
+
+/* ============ LOOKUP ============ */
+F({n:'VLOOKUP (exact)', cat:'lookup', lvl:'B', keys:'vlookup lookup',
+ does:'Searches the <b>first column</b> of a table and returns a value from a column to the right.',
+ syn:'VLOOKUP(lookup_value, table_array, col_index_num, [range_lookup])',
+ args:[['lookup_value','What to find'],['table_array','The table; lookup column must be first'],['col_index_num','Which column to return (1 = first)'],['range_lookup','0 / FALSE = exact, 1 / TRUE = approximate']],
+ g:[['Client-ID','Name','Age','','Find','Name'],['MSE001','Bharath',20,'','MSE003',''],['MSE002','Jyothsna',19],['MSE003','Bhanu',16],['MSE004','Gopi',24]],
+ at:'F2', f:'=VLOOKUP(E2,A2:C5,2,0)', out:'Bhanu', ty:'Text',
+ steps:[
+  ['E2','<b>lookup_value</b>: "MSE003" from E2.','=VLOOKUP("MSE003",A2:C5,2,0)'],
+  ['A2:C5','<b>table_array</b> A2:C5. VLOOKUP only searches its first column (A).','=VLOOKUP("MSE003",A2:C5,2,0)'],
+  ['A2:A5 A2~g A3~g !A4','Exact match (0): Excel scans A2, A3 … and finds MSE003 in the 3rd row of the table.','row 3 of the table'],
+  ['B4 !B4','<b>col_index_num</b> 2 = the 2nd column of the table (Name). Row 3, column 2 is B4.','=INDEX(A2:C5,3,2)'],
+  ['','Result: <b>Bhanu</b>.','="Bhanu"']],
+ alt:[['=VLOOKUP(E2,$A$2:$C$5,3,FALSE)','16','Age — lock the table with $ before copying.'],['=VLOOKUP(E2,A:C,{2,3},0)','Bhanu | 16','Array constant returns two columns (your "flower brackets" note).']],
+ qa:[['Why does VLOOKUP return #N/A even though the value exists?','Usual causes: extra spaces (use TRIM), number stored as text vs real number, or approximate match on unsorted data.'],
+     ['Can VLOOKUP look to the left?','No. The lookup column must be the first column of the table. Use INDEX/MATCH or XLOOKUP.'],
+     ['What happens when you insert a column inside the table?','The hard-coded col_index_num now points to the wrong column. MATCH or XLOOKUP avoid this.']],
+ co:['!Always type 0 / FALSE for exact match — the default is approximate.','×Duplicates: VLOOKUP returns only the first match.','Lock the table with F4 ($A$2:$C$5) before copying.']});
+
+F({n:'VLOOKUP (approximate)', cat:'lookup', lvl:'A', keys:'band slab range_lookup true',
+ does:'With range_lookup = 1, VLOOKUP finds the <b>largest value ≤ lookup_value</b> — perfect for bands, slabs and grades.',
+ syn:'VLOOKUP(lookup_value, table_array, col_index_num, TRUE)',
+ g:[['From age','Category','','Age','Category'],[0,'Child','',17,''],[13,'Teen'],[20,'Adult'],[60,'Senior']],
+ at:'E2', f:'=VLOOKUP(D2,A2:B5,2,1)', out:'Teen', ty:'Text',
+ steps:[
+  ['D2','Look up age <b>17</b>.','=VLOOKUP(17,A2:B5,2,1)'],
+  ['A2:A5 A2~g !A3 A4~g','The first column must be sorted ascending. 13 ≤ 17 but 20 > 17, so Excel stops at <b>13</b>.','largest value ≤ 17 → 13'],
+  ['B3','Column 2 of that row: <b>Teen</b>.','="Teen"'],
+  ['','<b>Teen</b>','="Teen"']],
+ qa:[['What must be true of the table for approximate match?','The first column must be sorted smallest to largest, otherwise results are wrong without any error.'],
+     ['Give a real use case.','Tax slabs, commission tiers, grade bands, shipping-weight rates.']],
+ co:['!Unsorted data gives wrong answers silently.','Your Lookup sheet D15:E22 uses this for age categories.']});
+
+F({n:'HLOOKUP', cat:'lookup', lvl:'B',
+ does:'Horizontal lookup: searches the <b>first row</b> and returns a value from a row below.',
+ syn:'HLOOKUP(lookup_value, table_array, row_index_num, [range_lookup])',
+ g:[['Month','Jan','Feb','Mar'],['Sales',45200,38900,51750],['Target',45000,42000,50000],['',''],['Feb sales','']],
+ at:'B5', f:'=HLOOKUP("Feb",A1:D3,2,0)', out:'38900', ty:'Number', hdr:false,
+ steps:[
+  ['A1:D3','Table A1:D3 — months run across row 1.','=HLOOKUP("Feb",A1:D3,2,0)'],
+  ['A1:D1 B1~g !C1','Scan row 1 for "Feb" → column C.','column C'],
+  ['C2 !C2','row_index_num 2 = Sales row → C2.','=38900'],
+  ['','<b>38900</b>','=38900']],
+ alt:[['=HLOOKUP("Mar",A1:D3,3,0)','50000','Target for March.'],['=XLOOKUP("Feb",B1:D1,B2:D2)','38900','XLOOKUP works both ways.']],
+ qa:[['When would you use HLOOKUP?','When headers (months, years) run across columns and you need a value from a row below.']],
+ co:['Same rules as VLOOKUP: 0 for exact match; cannot look up.']});
+
+F({n:'XLOOKUP', cat:'lookup', lvl:'M', keys:'xlookup left lookup not found',
+ does:'Modern lookup: any direction, exact match by default, built-in "not found" and last-match search.',
+ syn:'XLOOKUP(lookup_value, lookup_array, return_array, [if_not_found], [match_mode], [search_mode])',
+ args:[['lookup_array','One column (or row) to search'],['return_array','Column to return — can be LEFT of lookup_array'],['[if_not_found]','Your message instead of #N/A'],['[search_mode]','1 first-to-last, -1 last-to-first']],
+ g:[['Client-ID','Name','Age','','Find','Client-ID'],['MSE001','Bharath',20,'','Gopi',''],['MSE002','Jyothsna',19],['MSE003','Bhanu',16],['MSE004','Gopi',24]],
+ at:'F2', f:'=XLOOKUP(E2,B2:B5,A2:A5,"Not found")', out:'MSE004', ty:'Text',
+ steps:[
+  ['E2','Find the name <b>"Gopi"</b>.','=XLOOKUP("Gopi",B2:B5,A2:A5,"Not found")'],
+  ['B2:B5 B2~g B3~g B4~g !B5','Search <b>lookup_array</b> B2:B5 — the Name column. Match in position 4.','position 4'],
+  ['A2:A5 !A5','Return the 4th item of <b>return_array</b> A2:A5 — a column to the LEFT. VLOOKUP cannot do this.','=INDEX(A2:A5,4)'],
+  ['','<b>MSE004</b>. Had "Gopi" been missing, the 4th argument would return "Not found".','="MSE004"']],
+ alt:[['=XLOOKUP("Sridhar",B:B,A:A,"Not found",0,-1)','last match','search_mode -1 returns the LAST occurrence.'],['=XLOOKUP(E2,B2:B5,A2:C5)','spills 3 cells','Return a whole row at once.']],
+ qa:[['Name three advantages of XLOOKUP over VLOOKUP.','Looks left, defaults to exact match, has if_not_found, survives inserted columns, can search last-to-first and return multiple columns.'],
+     ['Which Excel versions have XLOOKUP?','Microsoft 365, Excel 2021 and 2024, Excel for the web. Older versions show #NAME?.']],
+ co:['!Files shared with Excel 2019 users show #NAME? — use INDEX/MATCH there.','Default is exact match, unlike VLOOKUP.']});
+
+F({n:'INDEX + MATCH', cat:'lookup', lvl:'A', keys:'index match two way',
+ does:'MATCH finds a <b>position</b>; INDEX returns the <b>value</b> at a position. Together: a two-way lookup.',
+ syn:'INDEX(array, row_num, [column_num]) | MATCH(lookup_value, lookup_array, [match_type])',
+ g:[['Name','Maths','Physics','Chemistry'],['Sudheer',59,57,57],['Gopi',79,62,78],['Satbir',58,78,72]],
+ at:'F2', f:'=INDEX(B2:D4,MATCH("Gopi",A2:A4,0),MATCH("Physics",B1:D1,0))', out:'62', ty:'Number',
+ steps:[
+  ['A2:A4 A2~g !A3','MATCH("Gopi", A2:A4, 0) → Gopi is the <b>2nd</b> name.','=INDEX(B2:D4,2,MATCH("Physics",B1:D1,0))'],
+  ['B1:D1 B1~g !C1','MATCH("Physics", B1:D1, 0) → Physics is the <b>2nd</b> subject.','=INDEX(B2:D4,2,2)'],
+  ['B2:D4 !C3','INDEX goes to row 2, column 2 of B2:D4 → C3.','=62'],
+  ['','<b>62</b> — change either name and the answer follows.','=62']],
+ alt:[['=MATCH("Gopi",A2:A4,0)','2','Position only.'],['=INDEX(B2:B4,3)','58','3rd value of Maths.']],
+ qa:[['Why do many analysts prefer INDEX/MATCH over VLOOKUP?','It looks left, is not broken by inserted columns, and can do two-way lookups. It also works in every Excel version.'],
+     ['What does match_type 0, 1 and -1 mean?','0 exact; 1 largest ≤ value (ascending data); -1 smallest ≥ value (descending data).']],
+ co:['!Always pass 0 as MATCH’s third argument for exact matches.','Your Lookup!AL5 uses the same two-way pattern.']});
+
+F({n:'OFFSET', cat:'lookup', lvl:'A', keys:'dynamic range',
+ does:'Returns a cell or range that is a given number of rows and columns away from a starting point.',
+ syn:'OFFSET(reference, rows, cols, [height], [width])',
+ g:[['Name','Maths','Physics','Chemistry'],['Sudheer',59,57,57],['Gopi',79,62,78],['Satbir',58,78,72]],
+ at:'F2', f:'=OFFSET(A1,2,3)', out:'78', ty:'Number',
+ steps:[
+  ['A1','Start at <b>A1</b>.','=OFFSET(A1,2,3)'],
+  ['A3','Move <b>2 rows</b> down → A3.','=OFFSET(A3,0,3)'],
+  ['D3','Move <b>3 columns</b> right → D3.','=D3'],
+  ['','Gopi’s Chemistry mark: <b>78</b>.','=78']],
+ alt:[['=SUM(OFFSET(A1,1,1,1,3))','173','Height 1, width 3 → B2:D2 (Sudheer’s total).'],['=SUM(OFFSET(B2,0,0,COUNT(B:B),1))','196','A range that grows with the data.']],
+ qa:[['Why is OFFSET called volatile?','It recalculates whenever anything in the workbook changes, which can slow large files. INDEX-based ranges are non-volatile.']],
+ co:['!Volatile — use sparingly in big models.','Height and width let OFFSET return a whole range.']});
+
+F({n:'LOOKUP', cat:'lookup', lvl:'A', keys:'lookup vector',
+ does:'Approximate lookup in a sorted vector. Also powers the famous multi-criteria trick LOOKUP(2,1/…).',
+ syn:'LOOKUP(lookup_value, lookup_vector, [result_vector])',
+ g:[['From age','Category','','Age','Category'],[0,'Child','',45,''],[13,'Teen'],[20,'Adult'],[60,'Senior']],
+ at:'E2', f:'=LOOKUP(D2,A2:A5,B2:B5)', out:'Adult', ty:'Text',
+ steps:[
+  ['D2','Look up <b>45</b>.','=LOOKUP(45,A2:A5,B2:B5)'],
+  ['A2:A5 !A4','Largest value ≤ 45 in the sorted vector is 20 (3rd item).','position 3'],
+  ['B2:B5 !B4','Same position in result_vector → <b>Adult</b>.','="Adult"'],
+  ['','<b>Adult</b>','="Adult"']],
+ alt:[['=LOOKUP(2,1/((A2:A9="Gopi")*(B2:B9="BA")),D2:D9)','last match','Multi-criteria lookup without Ctrl+Shift+Enter (your Lookup!W17).']],
+ qa:[['How does LOOKUP(2,1/(…)) work?','Matching rows become 1/1 = 1, others 1/0 = #DIV/0!. LOOKUP ignores errors and, searching for 2, lands on the last 1 — the last row meeting all conditions.']],
+ co:['!lookup_vector must be sorted ascending.','Always approximate — there is no exact-match switch.']});
+
+F({n:'DGET', cat:'lookup', lvl:'A', keys:'database',
+ does:'Extracts a single value from a database-style table using a criteria block.',
+ syn:'DGET(database, field, criteria)',
+ g:[['Name','Maths','Physics','','Name'],['Sudheer',59,57,'','Gopi'],['Gopi',79,62],['Satbir',58,78],['','',''],['Physics','']],
+ at:'B6', f:'=DGET(A1:C4,"Physics",E1:E2)', out:'62', ty:'Number', hdr:false,
+ steps:[
+  ['A1:C4','<b>database</b>: A1:C4 including headers.','=DGET(A1:C4,"Physics",E1:E2)'],
+  ['E1:E2','<b>criteria</b>: a header "Name" with "Gopi" below it.','Name = "Gopi"'],
+  ['A2:C4 !A3 !C3','Row 3 meets the criteria; field "Physics" → C3.','=62'],
+  ['','<b>62</b>','=62']],
+ qa:[['What if more than one row matches in DGET?','#NUM!. If none match, #VALUE!.']],
+ co:['Criteria headers must match the database headers exactly.','Other D-functions: DSUM, DCOUNT, DAVERAGE.']});
+/* ============ NUMBERS ============ */
+F({n:'INT · ABS', cat:'num', lvl:'B', keys:'int abs absolute integer',
+ does:'INT rounds <b>down</b> to the nearest whole number. ABS removes the minus sign.',
+ syn:'INT(number) | ABS(number)',
+ g:[['Given','INT','ABS'],[-10.6,'',''],[10.6],[-74]],
+ at:'B2', f:'=INT(A2)', out:'-11', ty:'Number', fill:{B3:'10',C2:'10.6',C3:'10.6',C4:'74'},
+ steps:[
+  ['A2','Given value: <b>-10.6</b>.','=INT(-10.6)'],
+  ['A2','INT always goes <b>down</b> the number line. Below -10.6 the next whole number is -11, not -10.','-11 < -10.6 < -10'],
+  ['','Result <b>-11</b>. For 10.6 INT gives 10; ABS turns -74 into 74.','=-11']],
+ alt:[['=TRUNC(-10.6)','-10','TRUNC just chops the decimals.'],['=ABS(-74)','74',''],['=A2-INT(A2)','0.4','The decimal part (useful for time values).']],
+ qa:[['What is the difference between INT and TRUNC?','For positive numbers none. For negatives INT rounds down (-10.6 → -11) while TRUNC removes decimals (-10.6 → -10).'],
+     ['Where is ABS used in practice?','Variance analysis: =ABS(Actual-Budget) gives the size of the difference regardless of direction.']],
+ co:['!INT on negative numbers surprises people — your Numbers sheet I10 shows -11.','INT(date-time) keeps only the date part.']});
+
+F({n:'VALUE', cat:'num', lvl:'B', keys:'text to number',
+ does:'Converts text that looks like a number into a real number.',
+ syn:'VALUE(text)',
+ g:[['Given (text)','VALUE'],['1,500',''],['25%'],['0045']],
+ at:'B2', f:'=VALUE(A2)', out:'1500', ty:'Number', fill:{B3:'0.25',B4:'45'},
+ steps:[
+  ['A2','A2 holds the <b>text</b> "1,500" — note the left alignment.','=VALUE("1,500")'],
+  ['A2','VALUE reads the characters, removes the thousands separator and builds a number.','1,500 → 1500'],
+  ['','<b>1500</b> — now right-aligned and usable in SUM. "25%" becomes 0.25, "0045" becomes 45.','=1500']],
+ alt:[['=A2*1','1500','Maths on text also converts it.'],['=--A2','1500','Double minus: popular shortcut.'],['=NUMBERVALUE("1.500,5",",",".")','1500.5','European separators.']],
+ qa:[['How can you convert a whole column of text numbers without formulas?','Type 1 in a cell, copy it, select the column, Paste Special ▸ Multiply. Or Data ▸ Text to Columns ▸ Finish.']],
+ co:['Signs of text numbers: left-aligned, green triangle, SUM ignores them.']});
+
+F({n:'MIN · MAX', cat:'num', lvl:'B', keys:'min max highest lowest',
+ does:'MAX returns the largest number in a range; MIN the smallest.',
+ syn:'MAX(number1, …) | MIN(number1, …)',
+ g:[['Name','Score','','Highest'],['Pooja',92],['Rani',98],['Deepika',50],['Jyotsna',89],['Bhanu',91]],
+ at:'D2', f:'=MAX(B2:B6)', out:'98', ty:'Number',
+ steps:[
+  ['B2:B6','Scan every score in B2:B6.','=MAX({92;98;50;89;91})'],
+  ['B2:B6 !B3','Keep the biggest seen so far: 92 → 98 → 98 → 98 → 98.','=98'],
+  ['','<b>98</b> (Rani). MIN would return 50.','=98']],
+ alt:[['=MIN(B2:B6)','50',''],['=INDEX(A2:A6,MATCH(MAX(B2:B6),B2:B6,0))','Rani','Name of the topper.'],['=MAX(0,B2-100)','0','Floor a result at zero.']],
+ qa:[['How do you return the name of the highest scorer?','=INDEX(names,MATCH(MAX(scores),scores,0)), or =XLOOKUP(MAX(scores),scores,names).']],
+ co:['MAX(0, x) is a quick way to stop negatives.','Text and blanks are ignored.']});
+
+F({n:'LARGE · SMALL', cat:'num', lvl:'B', keys:'large small top nth',
+ does:'The k-th largest or k-th smallest value.',
+ syn:'LARGE(array, k) | SMALL(array, k)',
+ g:[['Name','Score','','2nd highest'],['Pooja',92],['Rani',98],['Deepika',50],['Jyotsna',89],['Bhanu',91]],
+ at:'D2', f:'=LARGE(B2:B6,2)', out:'92', ty:'Number',
+ steps:[
+  ['B2:B6','Take the scores.','=LARGE({92;98;50;89;91},2)'],
+  ['B2:B6 !B3 !B2','Rank them high to low: 98, <b>92</b>, 91, 89, 50.','{98;92;91;89;50}'],
+  ['','k = 2 → the second one: <b>92</b>.','=92']],
+ alt:[['=SMALL(B2:B6,2)','89','2nd lowest.'],['=SUM(LARGE(B2:B6,{1,2,3}))','281','Sum of the top 3.']],
+ qa:[['LARGE(range,1) is the same as which function?','MAX. SMALL(range,1) equals MIN.']],
+ co:['k larger than the count of numbers → #NUM!.']});
+
+F({n:'RANK', cat:'num', lvl:'B', keys:'rank.eq position',
+ does:'Returns the position of a number within a list.',
+ syn:'RANK(number, ref, [order])',
+ args:[['order','0 or omitted = descending (highest = 1); 1 = ascending']],
+ g:[['Name','Score','Rank'],['Pooja',92,''],['Rani',98],['Deepika',50],['Jyotsna',89],['Bhanu',91]],
+ at:'C2', f:'=RANK(B2,$B$2:$B$6,0)', out:'2', ty:'Number', fill:{C3:'1',C4:'5',C5:'4',C6:'3'},
+ steps:[
+  ['B2','Rank Pooja’s score <b>92</b>.','=RANK(92,$B$2:$B$6,0)'],
+  ['B2:B6 !B3','Order 0 = descending. Only 98 is higher.','1 value above 92'],
+  ['','Position <b>2</b>. The $ keeps the list fixed when copied down.','=2']],
+ alt:[['=RANK(B2,$B$2:$B$6,1)','4','Ascending: lowest = 1.'],['=RANK.EQ(B2,$B$2:$B$6)','2','Modern name, same result.']],
+ qa:[['How does RANK treat ties?','Both get the same rank and the next rank is skipped (1, 2, 2, 4). RANK.AVG gives ties the average (2.5).']],
+ co:['!Forgetting $ on ref is the #1 RANK mistake — the list shrinks as you copy down.','Your Numbers!Q21 had exactly that: it pointed to the other table. Fixed in the workbook.']});
+
+F({n:'ROUND · ROUNDUP · ROUNDDOWN', cat:'num', lvl:'B', keys:'round roundup rounddown decimals',
+ does:'Round to a chosen number of digits: to nearest, always away from zero, or always toward zero.',
+ syn:'ROUND(number, num_digits) | ROUNDUP(number, num_digits) | ROUNDDOWN(number, num_digits)',
+ args:[['num_digits','2 = two decimals, 0 = whole number, -2 = hundreds']],
+ g:[['Given','ROUND 2','ROUNDUP 1','ROUNDDOWN 0'],[1234.5678,'','','']],
+ at:'B2', f:'=ROUND(A2,2)', out:'1234.57', ty:'Number', fill:{C2:'1234.6',D2:'1234'},
+ steps:[
+  ['A2','Keep 2 decimals of <b>1234.5678</b>.','=ROUND(1234.5678,2)'],
+  ['A2','Look at the 3rd decimal: <b>7</b> ≥ 5, so round the 2nd decimal up.','1234.56|78 → 1234.57'],
+  ['','<b>1234.57</b>. ROUNDUP to 1 decimal → 1234.6; ROUNDDOWN to 0 → 1234.','=1234.57']],
+ alt:[['=ROUND(1234.5678,-2)','1200','Negative digits round to tens / hundreds.'],['=ROUNDUP(-12.346,1)','-12.4','"Up" means away from zero.'],['=MROUND(47,5)','45','Nearest multiple.']],
+ qa:[['Does changing the number format round the value?','No — it only changes what you see. Calculations still use the full value. ROUND changes the stored value.'],
+     ['ROUNDUP(-2.1,0)?','-3. ROUNDUP moves away from zero.']],
+ co:['!Formatting ≠ rounding. Totals of formatted numbers can look "wrong" by 1.','Round at the end of a calculation, not in every intermediate step.']});
+
+F({n:'CEILING · FLOOR', cat:'num', lvl:'B', keys:'ceiling floor multiple',
+ does:'Round up (CEILING) or down (FLOOR) to the nearest <b>multiple</b> — 5, 0.5, 0.25, 100…',
+ syn:'CEILING(number, significance) | FLOOR(number, significance)',
+ g:[['Price','CEILING 5','FLOOR 5'],[47,'','']],
+ at:'B2', f:'=CEILING(A2,5)', out:'50', ty:'Number', fill:{C2:'45'},
+ steps:[
+  ['A2','Price <b>47</b>, multiple 5.','=CEILING(47,5)'],
+  ['A2','Multiples of 5 around 47: 45 and 50. CEILING goes up.','45 < 47 < 50'],
+  ['','<b>50</b>. FLOOR goes down to 45.','=50']],
+ alt:[['=CEILING(12.3,0.5)','12.5','Half-point bands.'],['=FLOOR(A2,0.25)','47','Quarter hours when used on times ×24.']],
+ qa:[['ROUND vs CEILING?','ROUND works with decimal places; CEILING/FLOOR work with any multiple (5, 0.25, 100).']],
+ co:['Your Others sheet uses FLOOR(…,0.5) to create band scores.']});
+
+F({n:'POWER', cat:'num', lvl:'B', keys:'exponent square root',
+ does:'Raises a number to a power. Same as the ^ operator.',
+ syn:'POWER(number, power)',
+ g:[['Base','Power','Result'],[5,2,'']],
+ at:'C2', f:'=POWER(A2,B2)', out:'25', ty:'Number',
+ steps:[['A2 B2','5 raised to the power 2.','=POWER(5,2)'],['','5 × 5 = <b>25</b>.','=25']],
+ alt:[['=5^2','25',''],['=POWER(9,0.5)','3','Square root.'],['=10000*POWER(1+8%,3)','12597.12','Compound interest for 3 years.']],
+ qa:[['How do you calculate a square root without SQRT?','=POWER(x,0.5) or =x^(1/2).']],
+ co:['Power 0.5 = square root; 1/3 = cube root.']});
+
+F({n:'ROMAN', cat:'num', lvl:'B',
+ does:'Converts a number (1–3999) to Roman numerals.',
+ syn:'ROMAN(number, [form])',
+ g:[['Number','Roman'],[2026,'']],
+ at:'B2', f:'=ROMAN(A2)', out:'MMXXVI', ty:'Text',
+ steps:[['A2','2026 = 2000 + 20 + 6.','=ROMAN(2026)'],['','MM + XX + VI = <b>MMXXVI</b>.','="MMXXVI"']],
+ alt:[['=ARABIC("MMXXVI")','2026','The reverse.'],['=ROMAN(3999)','MMMCMXCIX','Largest possible.']],
+ qa:[['What does ROMAN return for 4000?','#VALUE! — only 1 to 3999 are allowed.']],
+ co:['Handy for chapter or clause numbering.']});
+
+F({n:'RAND · RANDBETWEEN', cat:'num', lvl:'B', keys:'random dummy data',
+ does:'RAND gives a random decimal 0–1. RANDBETWEEN gives a random whole number between two limits.',
+ syn:'RAND() | RANDBETWEEN(bottom, top)',
+ g:[['Roll a die'],['']],
+ at:'A2', f:'=RANDBETWEEN(1,6)', out:'4', ty:'Random whole number (changes on every recalculation)',
+ steps:[['','bottom = 1, top = 6: every whole number in between is equally likely.','=RANDBETWEEN(1,6)'],['','Excel picks one — this time <b>4</b>. Press F9 and it changes.','=4']],
+ alt:[['=RAND()','0.7342','Decimal between 0 and 1.'],['=RAND()*(50-10)+10','e.g. 27.8','Decimal between 10 and 50.'],['=CHAR(RANDBETWEEN(65,90))','e.g. K','Random capital letter.']],
+ qa:[['How do you stop random numbers from changing?','Copy them and Paste Special ▸ Values.']],
+ co:['!Volatile: recalculates on every change.','RANDARRAY (365) makes a whole block of random numbers.']});
+
+F({n:'SUBTOTAL', cat:'num', lvl:'A', keys:'filter visible aggregate',
+ does:'Aggregates only the rows that are <b>visible</b> after filtering.',
+ syn:'SUBTOTAL(function_num, ref1, …)',
+ args:[['function_num','9 = SUM, 1 = AVERAGE, 2 = COUNT, 4 = MAX, 5 = MIN; add 100 (109…) to also skip manually hidden rows']],
+ g:[['Region','Sales','','Visible total'],['North',1200],['South',800],['North',450],['East',1500],['North',2100]],
+ hid:[3,5], at:'D2', f:'=SUBTOTAL(9,B2:B6)', out:'3750', ty:'Number',
+ steps:[
+  ['B2:B6','A filter shows only North; rows 3 and 5 are hidden (striped).','=SUBTOTAL(9,B2:B6)'],
+  ['!B2 !B4 !B6','function_num 9 = SUM of <b>visible</b> cells only.','=1200+450+2100'],
+  ['','<b>3750</b>. A plain SUM would still say 6050.','=3750']],
+ alt:[['=SUM(B2:B6)','6050','Ignores the filter.'],['=SUBTOTAL(2,B2:B6)','3','Visible count.'],['=AGGREGATE(9,6,B2:B6)','6050','AGGREGATE can also skip error values.']],
+ qa:[['SUBTOTAL 9 vs 109?','9 ignores rows hidden by a filter; 109 also ignores rows hidden manually (right-click ▸ Hide).'],
+     ['Why doesn’t SUBTOTAL double count?','It ignores other SUBTOTAL results inside its range, so a grand total over subtotals is correct.']],
+ co:['Clicking AutoSum on a filtered list inserts SUBTOTAL(9,…) automatically.']});
+
+F({n:'SEQUENCE', cat:'num', lvl:'M', keys:'serial spill',
+ does:'Generates a list of numbers that spills into neighbouring cells.',
+ syn:'SEQUENCE(rows, [columns], [start], [step])',
+ g:[['S.No']],
+ at:'A2', f:'=SEQUENCE(5)', out:[['1'],['2'],['3'],['4'],['5']], ty:'Spilled array (5 × 1)',
+ steps:[['','rows = 5, columns / start / step default to 1.','=SEQUENCE(5,1,1,1)'],['','Excel writes 1 in A2 and <b>spills</b> 2–5 below (dashed border).','={1;2;3;4;5}']],
+ alt:[['=SEQUENCE(5,1,100,10)','100…140','Start 100, step 10.'],['="EMP"&TEXT(SEQUENCE(3),"000")','EMP001…','Instant ID series.']],
+ qa:[['What is #SPILL!?','The spill area is blocked by a value. Clear the cells in the dashed range.']],
+ co:['Type only in the first cell; the others are read-only "ghost" values.']});
+
+/* ============ DATE & TIME ============ */
+F({n:'DATE', cat:'date', lvl:'B',
+ does:'Builds a real date from year, month and day numbers.',
+ syn:'DATE(year, month, day)',
+ g:[['Year','Month','Day','Date'],[2026,13,1,'']],
+ at:'D2', f:'=DATE(A2,B2,C2)', out:'01-Jan-2027', ty:'Date (serial 46388)',
+ steps:[
+  ['A2:C2','Year 2026, month <b>13</b>, day 1.','=DATE(2026,13,1)'],
+  ['B2','There is no month 13 — DATE rolls the extra month into the next year.','month 13 of 2026 = month 1 of 2027'],
+  ['','<b>01-Jan-2027</b>. Handy for "3 months after" maths: DATE(y, m+3, d).','=46388']],
+ alt:[['=DATE(2026,1,26)','26-Jan-2026',''],['=DATE(YEAR(A5),MONTH(A5)+1,1)','1st of next month','']],
+ qa:[['How are dates stored?','As serial numbers counting days from 1-Jan-1900. That is why you can subtract dates to get days.']],
+ co:['DATE is safer than typing "01/02/2026" — dd/mm vs mm/dd depends on regional settings.']});
+
+F({n:'TODAY · NOW', cat:'date', lvl:'B', keys:'today now current',
+ does:'TODAY returns the current date, NOW the date and time. Both update automatically.',
+ syn:'TODAY() | NOW()',
+ g:[["Today's date"],['']],
+ at:'A2', f:'=TODAY()', out:'28-Sep-2026', ty:'Date — changes every day',
+ steps:[['','No arguments. Excel reads your computer’s clock.','=TODAY()'],['','Shown here as <b>28-Sep-2026</b> — tomorrow it will say 29-Sep.','=46293']],
+ alt:[['=NOW()','28-Sep-2026 12:05',''],['=TODAY()+30','28-Oct-2026','30 days later.'],['=NOW()-TODAY()','12:05 PM','Current time only.']],
+ qa:[['How do you insert a date that does NOT change?','Ctrl + ; (Windows) or ⌃ ; (Mac) types today’s date as a fixed value.']],
+ co:['!Volatile — recalculates on every change.','Fixed time stamp: Ctrl + Shift + ; (Windows) · ⌘ ; (Mac).']});
+
+F({n:'EDATE · EOMONTH', cat:'date', lvl:'A', keys:'edate eomonth month end',
+ does:'EDATE moves a date by whole months. EOMONTH returns the <b>last day</b> of a month.',
+ syn:'EDATE(start_date, months) | EOMONTH(start_date, months)',
+ g:[['Start','+3 months','Month end','Next month end'],['15-Jan-2026','','','']],
+ at:'B2', f:'=EDATE(A2,3)', out:'15-Apr-2026', ty:'Date', fill:{C2:'31-Jan-2026',D2:'28-Feb-2026'},
+ steps:[['A2','Start 15-Jan-2026, add 3 months.','=EDATE(DATE(2026,1,15),3)'],['','Jan → Feb → Mar → Apr, same day: <b>15-Apr-2026</b>. EOMONTH(A2,0) = 31-Jan; EOMONTH(A2,1) = 28-Feb.','=15-Apr-2026']],
+ alt:[['=EOMONTH(A2,-1)+1','01-Jan-2026','First day of the month.'],['=EDATE("31-Jan-2026",1)','28-Feb-2026','Day adjusted to month end.']],
+ qa:[['How do you get the first day of the current month?','=EOMONTH(TODAY(),-1)+1']],
+ co:['Great for EMI schedules, renewals and month-end reports.']});
+
+F({n:'DATEDIF', cat:'date', lvl:'A', keys:'age tenure years months',
+ does:'Difference between two dates in complete years, months or days. A "hidden" function — no tooltip.',
+ syn:'DATEDIF(start_date, end_date, unit)',
+ args:[['unit','"Y" years · "M" months · "D" days · "YM" months after years · "MD" days after months']],
+ g:[['Joined','As on','Y','YM','MD'],['12-Jun-2015','28-Sep-2026','','','']],
+ at:'C2', f:'=DATEDIF(A2,B2,"Y")', out:'11', ty:'Number', fill:{D2:'3',E2:'16'},
+ steps:[
+  ['A2 B2','From 12-Jun-2015 to 28-Sep-2026.','=DATEDIF(A2,B2,"Y")'],
+  ['A2','Full years: 12-Jun-2015 → 12-Jun-2026 = <b>11</b>.','=11'],
+  ['','"YM": 12-Jun → 12-Sep = 3 months. "MD": 12-Sep → 28-Sep = 16 days. Service: 11 Y 3 M 16 D.','=11']],
+ alt:[['=DATEDIF(A2,B2,"Y")&" Yrs "&DATEDIF(A2,B2,"YM")&" Mths"','11 Yrs 3 Mths','Readable tenure.'],['=B2-A2','4126','Plain subtraction = days.']],
+ qa:[['Why doesn’t DATEDIF appear in the function list?','It was kept for Lotus 1-2-3 compatibility and is undocumented in the formula AutoComplete, but it works in every version.'],
+     ['What error if start date is after end date?','#NUM!']],
+ co:['!Start date must be earlier than end date.','"MD" can be odd at month ends; test with 31st dates.']});
+
+F({n:'TIME · HOUR · MINUTE · SECOND', cat:'date', lvl:'B', keys:'time hour minute second',
+ does:'TIME builds a time from parts; HOUR, MINUTE and SECOND pull the parts back out.',
+ syn:'TIME(hour, minute, second) | HOUR(time) | MINUTE(time) | SECOND(time)',
+ g:[['Login','HOUR','MINUTE','SECOND'],['09:05:12','','','']],
+ at:'B2', f:'=HOUR(A2)', out:'9', ty:'Number', fill:{C2:'5',D2:'12'},
+ steps:[['A2','Time 09:05:12 is stored as 0.3786 of a day.','=HOUR(0.3786)'],['','Hours part → <b>9</b>. MINUTE → 5, SECOND → 12.','=9']],
+ alt:[['=TIME(9,30,0)','9:30 AM',''],['=TIME(0,90,0)','1:30 AM','90 minutes rolls into hours.'],['=(C2-B2)*24','9.26','Hours between two times.']],
+ qa:[['Why multiply a time difference by 24?','Times are fractions of a day. ×24 converts to hours, ×1440 to minutes.'],
+     ['A total of 30 hours shows 6:00. Why?','The format h:mm resets after 24. Use [h]:mm.']],
+ co:['Format [h]:mm to show totals above 24 hours.']});
+
+F({n:'WEEKDAY · WEEKNUM', cat:'date', lvl:'B', keys:'weekday weeknum weekend',
+ does:'WEEKDAY gives the day-of-week number, WEEKNUM the week of the year.',
+ syn:'WEEKDAY(date, [return_type]) | WEEKNUM(date, [return_type])',
+ args:[['return_type','1 (default) Sun = 1 … Sat = 7; 2 Mon = 1 … Sun = 7']],
+ g:[['Date','WEEKDAY(,2)','Weekend?','WEEKNUM'],['28-Sep-2026','','','']],
+ at:'B2', f:'=WEEKDAY(A2,2)', out:'1', ty:'Number', fill:{C2:'Weekday',D2:'40'},
+ steps:[['A2','28-Sep-2026 is a Monday.','=WEEKDAY(A2,2)'],['','Type 2 counts Monday = 1 → <b>1</b>. =IF(WEEKDAY(A2,2)>5,"Weekend","Weekday") flags Sat/Sun.','=1']],
+ alt:[['=WEEKDAY(A2)','2','Default: Sunday = 1.'],['=TEXT(A2,"dddd")','Monday','Day name.'],['=ISOWEEKNUM(A2)','40','ISO week (Mon start).']],
+ qa:[['How do you highlight weekends in a date list?','Conditional formatting with =WEEKDAY($A2,2)>5.']],
+ co:['Your Text sheet K column now flags weekends this way.']});
+
+F({n:'WORKDAY', cat:'date', lvl:'A', keys:'due date working days holidays',
+ does:'The date after a number of <b>working days</b>, skipping weekends and holidays.',
+ syn:'WORKDAY(start_date, days, [holidays])',
+ g:[['Start','Days','Holiday','Due'],['28-Sep-2026',5,'02-Oct-2026','']],
+ at:'D2', f:'=WORKDAY(A2,B2,C2)', out:'06-Oct-2026', ty:'Date',
+ steps:[
+  ['A2 B2','Start Monday 28-Sep, add 5 working days.','=WORKDAY(A2,5,C2)'],
+  ['','Tue 29 (1), Wed 30 (2), Thu 1-Oct (3)…','3 counted'],
+  ['C2','Fri 2-Oct is Gandhi Jayanti → skipped. Sat/Sun skipped.','still 3'],
+  ['','Mon 5-Oct (4), Tue 6-Oct (5) → <b>06-Oct-2026</b>.','=06-Oct-2026']],
+ alt:[['=WORKDAY.INTL(A2,5,11,C2)','05-Oct-2026','Weekend = Sunday only (code 11), so Saturday counts.']],
+ qa:[['How do you handle a 6-day work week?','WORKDAY.INTL with weekend code 11 (Sunday only) or a string like "0000001".']],
+ co:['The start date itself is not counted.']});
+
+F({n:'NETWORKDAYS', cat:'date', lvl:'A', keys:'working days between',
+ does:'Counts working days between two dates (both included), excluding weekends and holidays.',
+ syn:'NETWORKDAYS(start_date, end_date, [holidays])',
+ g:[['Start','End','Holiday','Work days'],['01-Oct-2026','31-Oct-2026','02-Oct-2026','']],
+ at:'D2', f:'=NETWORKDAYS(A2,B2,C2)', out:'21', ty:'Number',
+ steps:[['A2 B2','October 2026: 31 calendar days.','=NETWORKDAYS(A2,B2,C2)'],['','Remove 9 weekend days → 22 weekdays.','22'],['C2','Remove the holiday on Friday 2-Oct → <b>21</b>.','=21']],
+ alt:[['=NETWORKDAYS.INTL(A2,B2,11,C2)','26','Sunday-only weekend.']],
+ qa:[['Does NETWORKDAYS include the start date?','Yes, both start and end are included if they are working days.']],
+ co:['Keep holidays in a separate list and reference it with $.']});
+
+/* ============ TEXT ============ */
+F({n:'TEXT', cat:'text', lvl:'B', keys:'format code',
+ does:'Formats a number or date as text using a format code.',
+ syn:'TEXT(value, format_text)',
+ g:[['Date','Day name'],['16-Mar-1999','']],
+ at:'B2', f:'=TEXT(A2,"dddd")', out:'Tuesday', ty:'Text',
+ steps:[['A2','A2 is the date 16-Mar-1999 (serial 36235).','=TEXT(36235,"dddd")'],['','"dddd" = full day name → <b>Tuesday</b>.','="Tuesday"']],
+ alt:[['="ZNC"&TEXT(1,"0000")','ZNC0001','Your employee-ID pattern.'],['=TEXT(0.256,"0.0%")','25.6%',''],['=TEXT(A2,"mmm-yy")','Mar-99',''],['=TEXT(1234567,"#,##0")','1,234,567','']],
+ qa:[['What is the downside of TEXT?','The result is text, so it cannot be summed or sorted as a number/date.']],
+ co:['ddd = Tue, dddd = Tuesday, mmm = Mar, mmmm = March.']});
+
+F({n:'LEFT · MID · RIGHT', cat:'text', lvl:'B', keys:'left mid right substring extract',
+ does:'Extract characters from the start, middle or end of text.',
+ syn:'LEFT(text, [num_chars]) | MID(text, start_num, num_chars) | RIGHT(text, [num_chars])',
+ g:[['Code','Year'],['HYD2024SAL015','']], chars:'HYD2024SAL015',
+ at:'B2', f:'=MID(A2,4,4)', out:'2024', ty:'Text',
+ steps:[['A2 c1-13','Every character has a position, starting at 1.','=MID("HYD2024SAL015",4,4)'],['m4','start_num = 4 → begin at "2".','start at 4'],['c4-7','num_chars = 4 → positions 4, 5, 6, 7.','="2024"'],['','<b>2024</b> (as text). LEFT(A2,3) = HYD; RIGHT(A2,3) = 015.','="2024"']],
+ alt:[['=LEFT(A2,3)','HYD',''],['=RIGHT(A2,3)','015',''],['=VALUE(MID(A2,4,4))','2024','As a number.']],
+ qa:[['How do you get text before a space without TEXTBEFORE?','=LEFT(A2,FIND(" ",A2)-1).']],
+ co:['Results are text — wrap in VALUE for maths.']});
+
+F({n:'LEN · TRIM', cat:'text', lvl:'B', keys:'len trim spaces clean',
+ does:'LEN counts characters; TRIM removes extra spaces (leading, trailing and doubles).',
+ syn:'LEN(text) | TRIM(text)',
+ g:[['Given','TRIM','LEN before','LEN after'],['  Sathish   Thiparappu  ','','','']], chars:'  Sathish   Thiparappu  ',
+ at:'B2', f:'=TRIM(A2)', out:'Sathish Thiparappu', ty:'Text', fill:{C2:'24',D2:'18'},
+ steps:[['m1-2 m10-11 m23-24','LEN = 24: 2 leading, 2 extra in the middle, 2 trailing spaces.','=TRIM("  Sathish   Thiparappu  ")'],['c3-9 c12 c13-22','TRIM keeps the words and one single space between them.','="Sathish Thiparappu"'],['','<b>Sathish Thiparappu</b> — LEN 18.','="Sathish Thiparappu"']],
+ alt:[['=TRIM(SUBSTITUTE(A2,CHAR(160)," "))','—','Web data uses non-breaking spaces TRIM cannot see.'],['=CLEAN(A2)','—','Removes non-printable characters.']],
+ qa:[['Why can VLOOKUP fail on names that look identical?','Hidden spaces. Compare LEN of both values and TRIM them.']],
+ co:['!TRIM does not remove CHAR(160) — SUBSTITUTE it first.']});
+
+F({n:'UPPER · LOWER · PROPER', cat:'text', lvl:'B', keys:'case capital',
+ does:'Change letter case: ALL CAPS, all small, or Each Word Capitalised.',
+ syn:'UPPER(text) | LOWER(text) | PROPER(text)',
+ g:[['Given','PROPER','UPPER'],['jYOTSNA jAKKE','','']],
+ at:'B2', f:'=PROPER(A2)', out:'Jyotsna Jakke', ty:'Text', fill:{C2:'JYOTSNA JAKKE'},
+ steps:[['A2','Mixed case input.','=PROPER("jYOTSNA jAKKE")'],['','First letter of each word upper, the rest lower → <b>Jyotsna Jakke</b>.','="Jyotsna Jakke"']],
+ alt:[['=LOWER(A2)','jyotsna jakke',''],['=PROPER("o\'brien")','O\'Brien','Letters after punctuation are capitalised too.']],
+ qa:[['How do you compare text case-sensitively?','=EXACT(A1,B1). The = operator ignores case.']],
+ co:['PROPER capitalises after any non-letter: "mcdonald’s" → "Mcdonald’S".']});
+
+F({n:'CONCATENATE · CONCAT · &', cat:'text', lvl:'B', keys:'join combine ampersand concat',
+ does:'Join text from several cells into one.',
+ syn:'CONCATENATE(text1, [text2], …) | CONCAT(text1, …)',
+ g:[['Name','Dept','Profile'],['Sathish','IT','']],
+ at:'C2', f:'=CONCATENATE(A2," - ",B2)', out:'Sathish - IT', ty:'Text',
+ steps:[['A2','Take "Sathish"…','="Sathish"&…'],['B2','…add the separator " - " and "IT".','="Sathish"&" - "&"IT"'],['','<b>Sathish - IT</b>','="Sathish - IT"']],
+ alt:[['=A2&" - "&B2','Sathish - IT','Quickest.'],['=CONCAT(A2:B2)','SathishIT','CONCAT accepts ranges.']],
+ qa:[['CONCAT vs TEXTJOIN?','CONCAT joins without a separator; TEXTJOIN adds a delimiter and can skip blanks.']],
+ co:['Numbers lose formatting when joined — wrap with TEXT(…,"#,##0").']});
+
+F({n:'TEXTJOIN', cat:'text', lvl:'A', keys:'join delimiter',
+ does:'Joins a range with a delimiter and can ignore empty cells.',
+ syn:'TEXTJOIN(delimiter, ignore_empty, text1, …)',
+ g:[['Names','','Joined'],['Gopi'],[''],['Bhanu'],['Rani']],
+ at:'C2', f:'=TEXTJOIN(", ",TRUE,A2:A5)', out:'Gopi, Bhanu, Rani', ty:'Text',
+ steps:[['A2:A5','Items: Gopi, (blank), Bhanu, Rani.','=TEXTJOIN(", ",TRUE,{"Gopi";"";"Bhanu";"Rani"})'],['A3','ignore_empty TRUE → the blank is dropped.','{"Gopi";"Bhanu";"Rani"}'],['','Joined with ", " → <b>Gopi, Bhanu, Rani</b>.','="Gopi, Bhanu, Rani"']],
+ alt:[['=TEXTJOIN(", ",FALSE,A2:A5)','Gopi, , Bhanu, Rani','Blank kept.']],
+ qa:[['How do you list all names that meet a condition in one cell?','=TEXTJOIN(", ",TRUE,FILTER(names,dept="IT")).']],
+ co:['Excel 2019+. Your Text sheet column Z uses it.']});
+
+F({n:'TEXTBEFORE · TEXTAFTER', cat:'text', lvl:'M', keys:'split first name surname',
+ does:'Text before or after a delimiter — no FIND/LEN arithmetic needed.',
+ syn:'TEXTBEFORE(text, delimiter, [instance_num]) | TEXTAFTER(text, delimiter, [instance_num])',
+ g:[['Name','First','Surname'],['Sathish Thiparappu','','']], chars:'Sathish Thiparappu',
+ at:'B2', f:'=TEXTBEFORE(A2," ")', out:'Sathish', ty:'Text', fill:{C2:'Thiparappu'},
+ steps:[['m8','Find the delimiter " " — position 8.','=TEXTBEFORE(A2," ")'],['c1-7','Everything before it: <b>Sathish</b>. TEXTAFTER gives Thiparappu.','="Sathish"']],
+ alt:[['=TEXTAFTER(A2," ",-1)','Thiparappu','-1 = search from the end (last word).']],
+ qa:[['How would you do this in Excel 2016?','=LEFT(A2,FIND(" ",A2)-1) and =MID(A2,FIND(" ",A2)+1,99).']],
+ co:['Microsoft 365 / Excel 2024.']});
+
+F({n:'TEXTSPLIT', cat:'text', lvl:'M', keys:'split columns',
+ does:'Splits text into separate cells by a delimiter (spills).',
+ syn:'TEXTSPLIT(text, col_delimiter, [row_delimiter])',
+ g:[['Full name','First','Surname'],['Sathish Thiparappu']],
+ at:'B2', f:'=TEXTSPLIT(A2," ")', out:[['Sathish','Thiparappu']], ty:'Spilled array (1 × 2)',
+ steps:[['A2','Split "Sathish Thiparappu" at every space.','=TEXTSPLIT(A2," ")'],['','Two pieces spill across B2:C2.','={"Sathish","Thiparappu"}']],
+ alt:[['=TEXTSPLIT("a,b;c,d",",",";")','2 × 2 grid','Rows and columns at once.']],
+ qa:[['Formula alternative to Data ▸ Text to Columns?','TEXTSPLIT — and it updates automatically when the source changes.']],
+ co:['Microsoft 365 / Excel 2024.']});
+
+F({n:'REPT · CHAR · CODE', cat:'text', lvl:'B', keys:'rept char code stars',
+ does:'REPT repeats text; CHAR turns a code into a character; CODE does the reverse.',
+ syn:'REPT(text, number_times) | CHAR(number) | CODE(text)',
+ g:[['Course','Rating','Stars'],['Excel',4,'']],
+ at:'C2', f:'=REPT("★",B2)&REPT("☆",5-B2)', out:'★★★★☆', ty:'Text',
+ steps:[['B2','Rating 4 → REPT("★",4) = ★★★★.','="★★★★"&REPT("☆",1)'],['','5 − 4 = 1 empty star → <b>★★★★☆</b>.','="★★★★☆"']],
+ alt:[['=CHAR(65)','A',''],['=CODE("a")','97',''],['="Line 1"&CHAR(10)&"Line 2"','two lines','Line break (turn on Wrap Text).']],
+ qa:[['How can you make an in-cell bar chart without charts?','=REPT("|",value/100) in a cell with a narrow font.']],
+ co:['CHAR(10) needs Wrap Text to display the line break.']});
+
+F({n:'ROW · COLUMN', cat:'text', lvl:'B', keys:'row column serial number',
+ does:'Return the row or column number of a reference (or of the cell itself).',
+ syn:'ROW([reference]) | COLUMN([reference])',
+ g:[['S.No','Name'],['','Gopi'],['','Bhanu'],['','Rani']],
+ at:'A2', f:'=ROW()-1', out:'1', ty:'Number', fill:{A3:'2',A4:'3'},
+ steps:[['A2','ROW() with no argument = the formula’s own row: 2.','=2-1'],['','2 − 1 = <b>1</b>. Copied down: 2, 3 — serials that survive sorting and deleting rows.','=1']],
+ alt:[['=COLUMN(H1)','8','H is the 8th column.'],['=ROWS(A2:B4)','3','Number of rows in a range.']],
+ qa:[['Why use ROW()-1 instead of typing 1, 2, 3?','Typed numbers go out of order when rows are inserted or deleted; ROW recalculates.']],
+ co:['Your ZNC0001 IDs use ROW(A1) inside TEXT.']});
+
+/* ============ FIND & REPLACE ============ */
+F({n:'FIND', cat:'find', lvl:'B', keys:'position case sensitive',
+ does:'Position of one text inside another (case-sensitive, no wildcards).',
+ syn:'FIND(find_text, within_text, [start_num])',
+ g:[['E-mail','Position of @'],['sathish.t@znc.com','']], chars:'sathish.t@znc.com',
+ at:'B2', f:'=FIND("@",A2)', out:'10', ty:'Number',
+ steps:[['c1-9','Scan from position 1: s, a, t, h, i, s, h, ., t — no "@" yet.','=FIND("@","sathish.t@znc.com")'],['c10','"@" found at position <b>10</b>.','=10'],['','Use it: LEFT(A2,10-1) = sathish.t (user name).','=10']],
+ alt:[['=LEFT(A2,FIND("@",A2)-1)','sathish.t',''],['=MID(A2,FIND("@",A2)+1,99)','znc.com','Domain.']],
+ qa:[['What does FIND return if the text is not found?','#VALUE! — wrap with IFERROR or test with ISNUMBER(FIND(…)).']],
+ co:['Case matters: FIND("S","sathish") → #VALUE!.']});
+
+F({n:'SEARCH', cat:'find', lvl:'B', keys:'wildcard contains',
+ does:'Like FIND but <b>not</b> case-sensitive and allows wildcards.',
+ syn:'SEARCH(find_text, within_text, [start_num])',
+ g:[['Text','SEARCH "excel"'],['Basic EXCEL skills','']], chars:'Basic EXCEL skills',
+ at:'B2', f:'=SEARCH("excel",A2)', out:'7', ty:'Number',
+ steps:[['c1-6','Positions 1–6: "Basic ".','=SEARCH("excel","Basic EXCEL skills")'],['c7-11','"EXCEL" matches "excel" because SEARCH ignores case → starts at <b>7</b>.','=7']],
+ alt:[['=FIND("excel",A2)','#VALUE!','Case-sensitive — no match.'],['=IF(ISNUMBER(SEARCH("excel",A2)),"Yes","No")','Yes','"Contains" test.']],
+ qa:[['How do you check whether a cell contains a word?','=ISNUMBER(SEARCH("word",A1)).']],
+ co:['Wildcards: ? one character, * any characters.']});
+
+F({n:'REPLACE', cat:'find', lvl:'B', keys:'mask position',
+ does:'Replaces characters at a given <b>position</b>.',
+ syn:'REPLACE(old_text, start_num, num_chars, new_text)',
+ g:[['Phone','Masked'],['9876543210','']], chars:'9876543210',
+ at:'B2', f:'=REPLACE(A2,1,6,"XXXXXX")', out:'XXXXXX3210', ty:'Text',
+ steps:[['c1-6','start 1, num_chars 6 → positions 1–6.','=REPLACE("9876543210",1,6,"XXXXXX")'],['','Swap them for XXXXXX → <b>XXXXXX3210</b>.','="XXXXXX3210"']],
+ alt:[['=REPLACE("ZNC0001",1,3,"ZTS")','ZTS0001','Change a prefix.']],
+ qa:[['REPLACE vs SUBSTITUTE?','REPLACE: by position. SUBSTITUTE: by matching text.']],
+ co:['Store phone numbers as text so leading zeros survive.']});
+
+F({n:'SUBSTITUTE', cat:'find', lvl:'B', keys:'replace text count occurrences',
+ does:'Replaces specific text wherever it appears (or only a chosen occurrence).',
+ syn:'SUBSTITUTE(text, old_text, new_text, [instance_num])',
+ g:[['Code','Result'],['PEN-BLU-001','']], chars:'PEN-BLU-001',
+ at:'B2', f:'=SUBSTITUTE(A2,"-","/")', out:'PEN/BLU/001', ty:'Text',
+ steps:[['m4 m8','Every "-" is found: positions 4 and 8.','=SUBSTITUTE("PEN-BLU-001","-","/")'],['','Each is swapped for "/" → <b>PEN/BLU/001</b>.','="PEN/BLU/001"']],
+ alt:[['=SUBSTITUTE(A2,"-"," #",2)','PEN-BLU #001','Only the 2nd hyphen.'],['=LEN(A2)-LEN(SUBSTITUTE(A2,"-",""))','2','Count hyphens.']],
+ qa:[['How do you count words in a cell?','=LEN(TRIM(A1))-LEN(SUBSTITUTE(A1," ",""))+1']],
+ co:['SUBSTITUTE is case-sensitive.']});
+
+/* ============ STATISTICAL ============ */
+F({n:'MEDIAN · MODE · STDEV', cat:'stat', lvl:'A', keys:'median mode stdev standard deviation',
+ does:'MEDIAN = middle value, MODE = most frequent, STDEV = typical distance from the mean.',
+ syn:'MEDIAN(number1, …) | MODE(number1, …) | STDEV(number1, …)',
+ g:[['Score','','Median'],[45],[67],[89],[72],[55],[67],[91]],
+ at:'C2', f:'=MEDIAN(A2:A8)', out:'67', ty:'Number',
+ steps:[['A2:A8','Seven scores.','=MEDIAN({45;67;89;72;55;67;91})'],['A2:A8','Sort: 45, 55, 67, <b>67</b>, 72, 89, 91.','middle = 4th of 7'],['','Median <b>67</b>. MODE is also 67; the mean is 69.43; STDEV ≈ 16.69.','=67']],
+ alt:[['=MODE(A2:A8)','67',''],['=STDEV(A2:A8)','16.69','Sample standard deviation.'],['=AVERAGE(A2:A8)','69.43','']],
+ qa:[['With an even count, what does MEDIAN return?','The average of the two middle values.'],['STDEV vs STDEV.P?','STDEV / STDEV.S for a sample; STDEV.P when you have the whole population.']],
+ co:['Median resists outliers better than the mean.']});
+
+F({n:'PERCENTILE · QUARTILE', cat:'stat', lvl:'A', keys:'percentile quartile',
+ does:'Value below which a given percentage of data falls.',
+ syn:'PERCENTILE(array, k) | QUARTILE(array, quart)',
+ g:[['Score','','90th pct'],[40],[50],[60],[70],[80]],
+ at:'C2', f:'=PERCENTILE(A2:A6,0.9)', out:'76', ty:'Number',
+ steps:[['A2:A6','Sorted scores 40–80 (n = 5).','=PERCENTILE(A2:A6,0.9)'],['A5 A6','Position = (n−1)×k + 1 = 4×0.9 + 1 = 4.6 → between the 4th (70) and 5th (80).','=70+0.6*(80-70)'],['','<b>76</b>.','=76']],
+ alt:[['=QUARTILE(A2:A6,1)','50','25th percentile.'],['=PERCENTRANK(A2:A6,70)','0.75','Reverse direction.']],
+ qa:[['What is the 3rd quartile?','The 75th percentile — QUARTILE(range,3).']],
+ co:['PERCENTILE.INC is the modern name (same result).']});
+
+F({n:'CORREL', cat:'stat', lvl:'A', keys:'correlation relationship',
+ does:'How strongly two sets of numbers move together, from −1 to +1.',
+ syn:'CORREL(array1, array2)',
+ g:[['Hours','Score','','r'],[2,45],[3,52],[5,68],[1,35],[4,60]],
+ at:'D2', f:'=CORREL(A2:A6,B2:B6)', out:'0.9986', ty:'Number',
+ steps:[['A2:A6','array1: study hours.','=CORREL(A2:A6,B2:B6)'],['B2:B6','array2: scores for the same students.','paired values'],['','More hours ↔ higher score almost perfectly → <b>0.9986</b> (strong positive).','=0.9986']],
+ qa:[['Does a correlation of 0.99 prove hours cause higher scores?','No — correlation shows association, not cause.']],
+ co:['Draw a scatter chart to see the pattern.']});
+
+F({n:'LAMBDA', cat:'stat', lvl:'M', keys:'custom function name manager',
+ does:'Create your own reusable function with a name — no VBA.',
+ syn:'LAMBDA([parameter1, …], calculation)',
+ g:[['Price','GST','Incl. GST'],[1000,'18%','']],
+ at:'C2', f:'=LAMBDA(p,r,p*(1+r))(A2,B2)', out:'1180', ty:'Number',
+ steps:[['','Parameters p and r are placeholders; p*(1+r) is the calculation.','=LAMBDA(p,r,p*(1+r))'],['A2 B2','Values are passed in brackets: p = 1000, r = 18%.','=1000*(1+0.18)'],['','<b>1180</b>. Save it in Name Manager as AddGST and use =AddGST(A2,B2).','=1180']],
+ alt:[['=AddGST(A2,B2)','1180','After Formulas ▸ Name Manager ▸ New.']],
+ qa:[['What does LET do compared with LAMBDA?','LET names values inside one formula; LAMBDA creates a reusable function.']],
+ co:['Microsoft 365. Named LAMBDAs travel with the workbook.']});
+
+/* ============ DYNAMIC ARRAYS ============ */
+F({n:'UNIQUE', cat:'dyn', lvl:'M', keys:'distinct remove duplicates',
+ does:'Returns each distinct value once (spills).',
+ syn:'UNIQUE(array, [by_col], [exactly_once])',
+ g:[['Dept','','Unique'],['IT'],['Sales'],['IT'],['HR'],['Sales']],
+ at:'C2', f:'=UNIQUE(A2:A6)', out:[['IT'],['Sales'],['HR']], ty:'Spilled array (3 × 1)',
+ steps:[['A2:A6','Five departments.','=UNIQUE(A2:A6)'],['!A2 !A3 !A5','Keep the first occurrence of each: IT, Sales, HR.','={"IT";"Sales";"HR"}'],['','Three values spill into C2:C4.','={"IT";"Sales";"HR"}']],
+ alt:[['=UNIQUE(A2:A6,,TRUE)','HR','Values that appear exactly once.'],['=COUNTA(UNIQUE(A2:A6))','3','Distinct count.']],
+ qa:[['How do you get a sorted unique list?','=SORT(UNIQUE(range)).']],
+ co:['Your Sum sheet headers use UNIQUE — new products appear automatically.']});
+
+F({n:'FILTER', cat:'dyn', lvl:'M', keys:'filter rows condition',
+ does:'Returns only the rows that meet a condition.',
+ syn:'FILTER(array, include, [if_empty])',
+ g:[['Name','Sales','','Name','Sales'],['Sathish',52000],['Gopi',61000],['Jyotsna',47000],['Bhanu',58000]],
+ at:'D2', f:'=FILTER(A2:B5,B2:B5>50000,"None")', out:[['Sathish','52000'],['Gopi','61000'],['Bhanu','58000']], ty:'Spilled array (3 × 2)',
+ steps:[['B2:B5','include: B2:B5 > 50000 for each row.','{TRUE;TRUE;FALSE;TRUE}'],['A2:B5 !A2 !A3 !A5','Rows 2, 3, 5 are kept.','=FILTER(A2:B5,{TRUE;TRUE;FALSE;TRUE})'],['','They spill into D2:E4.','3 rows']],
+ alt:[['=FILTER(A2:B5,(B2:B5>50000)*(A2:A5<>"Gopi"))','2 rows','* = AND.'],['=FILTER(A2:B5,(B2:B5>60000)+(B2:B5<48000))','2 rows','+ = OR.']],
+ qa:[['How do you combine conditions in FILTER?','Multiply for AND, add for OR — AND()/OR() do not work row-by-row.']],
+ co:['!No matches and no if_empty → #CALC!.']});
+
+F({n:'SORT', cat:'dyn', lvl:'M', keys:'sort order descending',
+ does:'Returns a sorted copy of a range.',
+ syn:'SORT(array, [sort_index], [sort_order], [by_col])',
+ g:[['Name','Sales','','Name','Sales'],['Sathish',52000],['Gopi',61000],['Jyotsna',47000],['Bhanu',58000]],
+ at:'D2', f:'=SORT(A2:B5,2,-1)', out:[['Gopi','61000'],['Bhanu','58000'],['Sathish','52000'],['Jyotsna','47000']], ty:'Spilled array (4 × 2)',
+ steps:[['B2:B5','sort_index 2 → sort by the Sales column.','=SORT(A2:B5,2,-1)'],['','sort_order -1 → largest first. The original data is untouched.','4 rows']],
+ alt:[['=SORTBY(A2:A5,B2:B5,-1)','names only','Sort by a column you don’t return.']],
+ qa:[['SORT vs Data ▸ Sort?','Data ▸ Sort rearranges the source; SORT makes a live copy.']],
+ co:['Microsoft 365 / Excel 2021+.']});
+
+F({n:'VSTACK · HSTACK', cat:'dyn', lvl:'M', keys:'append combine',
+ does:'VSTACK stacks ranges on top of each other; HSTACK places them side by side.',
+ syn:'VSTACK(array1, [array2], …) | HSTACK(array1, [array2], …)',
+ g:[['Team A','','Team B','','All'],['Sathish','','Sowkya'],['Gopi','','Pooja']],
+ at:'E2', f:'=VSTACK(A2:A3,C2:C3)', out:[['Sathish'],['Gopi'],['Sowkya'],['Pooja']], ty:'Spilled array (4 × 1)',
+ steps:[['A2:A3','First array: Team A.','=VSTACK(A2:A3,C2:C3)'],['C2:C3','Second array: Team B, added below.','={"Sathish";"Gopi";"Sowkya";"Pooja"}'],['','Four names spill into E2:E5.','4 rows']],
+ alt:[['=HSTACK(A2:A3,C2:C3)','2 × 2','Side by side.']],
+ qa:[['How do you append two sheets with the same columns?','=VSTACK(Sheet1!A2:D100,Sheet2!A2:D100).']],
+ co:['Mismatched widths are padded with #N/A — wrap in IFNA.']});
+
+F({n:'DROP · TAKE', cat:'dyn', lvl:'M', keys:'drop take header',
+ does:'DROP removes rows/columns from the start or end; TAKE keeps them.',
+ syn:'DROP(array, rows, [columns]) | TAKE(array, rows, [columns])',
+ g:[['Name','Sales','','Result'],['Sathish',52000],['Gopi',61000],['Jyotsna',47000]],
+ at:'D2', f:'=DROP(A1:A4,1)', out:[['Sathish'],['Gopi'],['Jyotsna']], ty:'Spilled array (3 × 1)',
+ steps:[['A1:A4','Four rows including the header.','=DROP(A1:A4,1)'],['A1~g','rows = 1 → drop the first row (header).','={"Sathish";"Gopi";"Jyotsna"}'],['','Three names spill.','3 rows']],
+ alt:[['=TAKE(A2:A4,2)','Sathish, Gopi','Keep the first 2.'],['=TAKE(SORT(A2:B4,2,-1),1)','Gopi 61000','Top performer.']],
+ qa:[['How do you get the top 3 rows by sales?','=TAKE(SORT(data,2,-1),3).']],
+ co:['Negative numbers work from the end.']});
+const PARTS={};
+
+/* ---------- Count ---------- */
+PARTS['COUNT · COUNTA · COUNTBLANK']=[
+ {t:'COUNT', inherit:1, d:'Counts only cells that contain <b>numbers</b>.', last:'Result: <b>4</b> numeric cells.'},
+ {t:'COUNTA', d:'Counts every cell that is <b>not empty</b> — numbers, text, errors.', at:'E3', f:'=COUNTA(B2:B7)', out:'5', ty:'Number',
+  steps:[['B2:B7','COUNTA looks at the same range, B2:B7.','=COUNTA(B2:B7)'],
+   ['B2:B7 !B2 !B3 !B4 !B6 !B7','Anything that is not empty counts: 5644, 6214, the text <b>"NA"</b>, 8037 and 0.','=COUNTA({5644;6214;"NA";"";8037;0})'],
+   ['B2:B7 B5~g','Only <b>B5</b> is truly empty, so it is the one cell skipped.','=COUNTA({5644;6214;"NA";8037;0})'],
+   ['','Result: <b>5</b>.','=5']]},
+ {t:'COUNTBLANK', d:'Counts cells that are <b>empty</b>.', at:'E4', f:'=COUNTBLANK(B2:B7)', out:'1', ty:'Number',
+  steps:[['B2:B7','COUNTBLANK checks B2:B7 for empty cells.','=COUNTBLANK(B2:B7)'],
+   ['B2:B7 !B5','Only B5 has nothing in it. "NA" and 0 are values, not blanks.','{FALSE;FALSE;FALSE;TRUE;FALSE;FALSE}'],
+   ['','Result: <b>1</b>. Check: COUNTA 5 + COUNTBLANK 1 = 6 cells in the range.','=1']]}];
+
+/* ---------- Logical ---------- */
+PARTS['AND · OR']=[
+ {t:'AND', inherit:1, d:'TRUE only when <b>every</b> test is TRUE.', last:'AND needs every test TRUE, and one is FALSE → <b>FALSE</b>.'},
+ {t:'OR', d:'TRUE when <b>at least one</b> test is TRUE.', at:'E2', f:'=OR(B2>=35,C2>=35)', out:'TRUE', ty:'Logical',
+  steps:[['B2','Test 1: English 25 ≥ 35 → <b>FALSE</b>.','=OR(FALSE,C2>=35)'],
+   ['C2','Test 2: Maths 82 ≥ 35 → <b>TRUE</b>.','=OR(FALSE,TRUE)'],
+   ['','OR needs just one TRUE → <b>TRUE</b>.','=TRUE']]}];
+
+const MMG=[['Region','Value','','India min','India max'],['India',661],['India',3551],['Brazil',899],['India',1797],['Brazil',4614]];
+PARTS['MINIFS · MAXIFS']=[
+ {t:'MINIFS', inherit:1, g:MMG, d:'Smallest value among rows that meet the conditions.'},
+ {t:'MAXIFS', g:MMG, d:'Largest value among rows that meet the conditions.', at:'E2', f:'=MAXIFS(B2:B6,A2:A6,"India")', out:'3551', ty:'Number',
+  steps:[['B2:B6','max_range first: the values in B2:B6.','=MAXIFS(B2:B6,A2:A6,"India")'],
+   ['A2:A6 !A2 !A3 !A5','Rows where Region = "India": 2, 3 and 5.','{TRUE;TRUE;FALSE;TRUE;FALSE}'],
+   ['B2 B3 B5','Candidates: 661, 3551, 1797.','=MAX(661,3551,1797)'],
+   ['','Largest: <b>3551</b>.','=3551']]}];
+
+/* ---------- Lookup ---------- */
+PARTS['INDEX + MATCH']=[
+ {t:'MATCH', d:'Returns the <b>position</b> of a value in a list.', at:'F2', f:'=MATCH("Gopi",A2:A4,0)', out:'2', ty:'Number',
+  steps:[['A2:A4','lookup_array: the names in A2:A4.','=MATCH("Gopi",A2:A4,0)'],
+   ['A2:A4 A2~g !A3','match_type 0 = exact. Sudheer is position 1, Gopi position 2 — found.','position 2'],
+   ['','MATCH returns the <b>position</b>, not the name: <b>2</b>.','=2']]},
+ {t:'INDEX', d:'Returns the <b>value</b> at a given row and column of a range.', at:'F2', f:'=INDEX(B2:D4,2,2)', out:'62', ty:'Number',
+  steps:[['B2:D4','array: the marks in B2:D4 (3 rows × 3 columns).','=INDEX(B2:D4,2,2)'],
+   ['B3:D3~n','row_num 2 → the 2nd row of the array (Gopi).','row 2'],
+   ['C2:C4~g !C3','column_num 2 → the 2nd column (Physics). Row and column cross at C3.','=C3'],
+   ['','<b>62</b>.','=62']]},
+ {t:'INDEX + MATCH', inherit:1, d:'MATCH supplies the row and column numbers; INDEX fetches the value.'}];
+
+/* ---------- Numbers ---------- */
+PARTS['INT · ABS']=[
+ {t:'INT', inherit:1, d:'Rounds <b>down</b> to the nearest whole number.', fill:{B3:'10'}, last:'Result <b>-11</b>. For positive 10.6, INT gives 10.'},
+ {t:'ABS', d:'Returns the value <b>without its sign</b> — its distance from zero.', at:'C4', f:'=ABS(A4)', out:'74', ty:'Number', fill:{C2:'10.6',C3:'10.6'},
+  steps:[['A4','Given value: <b>-74</b>.','=ABS(-74)'],
+   ['A4','ABS drops the minus sign; positive numbers stay unchanged.','|-74| = 74'],
+   ['','<b>74</b>. ABS(-10.6) = 10.6 and ABS(10.6) = 10.6.','=74']]}];
+
+const MXG=[['Name','Score','','Highest','Lowest'],['Pooja',92],['Rani',98],['Deepika',50],['Jyotsna',89],['Bhanu',91]];
+PARTS['MIN · MAX']=[
+ {t:'MAX', inherit:1, g:MXG, d:'Largest number in the range.', last:'<b>98</b> — Rani is the topper.'},
+ {t:'MIN', g:MXG, d:'Smallest number in the range.', at:'E2', f:'=MIN(B2:B6)', out:'50', ty:'Number',
+  steps:[['B2:B6','Scan every score in B2:B6.','=MIN({92;98;50;89;91})'],
+   ['B2:B6 !B4','Keep the smallest seen so far: 92 → 92 → 50 → 50 → 50.','=50'],
+   ['','<b>50</b> — Deepika.','=50']]}];
+
+const LSG=[['Name','Score','','2nd highest','2nd lowest'],['Pooja',92],['Rani',98],['Deepika',50],['Jyotsna',89],['Bhanu',91]];
+PARTS['LARGE · SMALL']=[
+ {t:'LARGE', inherit:1, g:LSG, d:'The k-th <b>largest</b> value.'},
+ {t:'SMALL', g:LSG, d:'The k-th <b>smallest</b> value.', at:'E2', f:'=SMALL(B2:B6,2)', out:'89', ty:'Number',
+  steps:[['B2:B6','Take the scores.','=SMALL({92;98;50;89;91},2)'],
+   ['B2:B6 !B4 !B5','Rank them low to high: 50, <b>89</b>, 91, 92, 98.','{50;89;91;92;98}'],
+   ['','k = 2 → the second smallest: <b>89</b>.','=89']]}];
+
+PARTS['ROUND · ROUNDUP · ROUNDDOWN']=[
+ {t:'ROUND', inherit:1, d:'Rounds to the <b>nearest</b> value (5 and above goes up).', last:'<b>1234.57</b>.'},
+ {t:'ROUNDUP', d:'Always rounds <b>away from zero</b>.', at:'C2', f:'=ROUNDUP(A2,1)', out:'1234.6', ty:'Number',
+  steps:[['A2','Keep <b>1</b> decimal of 1234.5678.','=ROUNDUP(1234.5678,1)'],
+   ['A2','ROUNDUP ignores the size of the next digit — any remainder pushes it up.','1234.5|678 → 1234.6'],
+   ['','<b>1234.6</b>. Even 1234.51 would become 1234.6.','=1234.6']]},
+ {t:'ROUNDDOWN', d:'Always rounds <b>towards zero</b> — extra digits are cut off.', at:'D2', f:'=ROUNDDOWN(A2,0)', out:'1234', ty:'Number',
+  steps:[['A2','Keep <b>0</b> decimals.','=ROUNDDOWN(1234.5678,0)'],
+   ['A2','The decimal part .5678 is simply removed.','1234|.5678 → 1234'],
+   ['','<b>1234</b> — ROUND would give 1235.','=1234']]}];
+
+PARTS['CEILING · FLOOR']=[
+ {t:'CEILING', inherit:1, d:'Rounds <b>up</b> to the nearest multiple.', last:'<b>50</b>.'},
+ {t:'FLOOR', d:'Rounds <b>down</b> to the nearest multiple.', at:'C2', f:'=FLOOR(A2,5)', out:'45', ty:'Number',
+  steps:[['A2','Price <b>47</b>, multiple 5.','=FLOOR(47,5)'],
+   ['A2','Multiples of 5 around 47 are 45 and 50. FLOOR goes down.','45 < 47 < 50'],
+   ['','<b>45</b>.','=45']]}];
+
+const RDG=[['Die roll','Random 0–1'],['','']];
+PARTS['RAND · RANDBETWEEN']=[
+ {t:'RANDBETWEEN', inherit:1, g:RDG, d:'Random <b>whole number</b> between two limits.'},
+ {t:'RAND', g:RDG, d:'Random <b>decimal</b> ≥ 0 and < 1.', at:'B2', f:'=RAND()', out:'0.7342', ty:'Random decimal (changes on every recalculation)',
+  steps:[['','RAND takes no arguments — the brackets stay empty.','=RAND()'],
+   ['','Excel returns a decimal from 0 up to (not including) 1 — this time <b>0.7342</b>.','=0.7342'],
+   ['','Scale it for any range: RAND()*(50-10)+10 gives a decimal between 10 and 50.','=0.7342']]}];
+
+/* ---------- Date & time ---------- */
+const TNG=[["Today's date",'Now'],['','']];
+PARTS['TODAY · NOW']=[
+ {t:'TODAY', inherit:1, g:TNG, d:'The current <b>date</b> only.'},
+ {t:'NOW', g:TNG, d:'The current date <b>and time</b>.', at:'B2', f:'=NOW()', out:'28-Sep-2026 12:05', ty:'Date + time — changes on every recalculation',
+  steps:[['','No arguments. NOW reads the clock, including the time.','=NOW()'],
+   ['','Stored as one number: the whole part is the date (46293), the decimal part is the time (0.5035 of a day).','=46293.5035'],
+   ['','Formatted as <b>28-Sep-2026 12:05</b>. =NOW()-TODAY() leaves only the time.','=46293.5035']]}];
+
+PARTS['EDATE · EOMONTH']=[
+ {t:'EDATE', inherit:1, d:'Same day, a number of months later or earlier.', last:'Jan → Feb → Mar → Apr, same day: <b>15-Apr-2026</b>.'},
+ {t:'EOMONTH', d:'The <b>last day</b> of a month, a number of months away.', at:'C2', f:'=EOMONTH(A2,0)', out:'31-Jan-2026', ty:'Date', fill:{D2:'28-Feb-2026'},
+  steps:[['A2','Start 15-Jan-2026. months = 0 → stay in January.','=EOMONTH(A2,0)'],
+   ['','Jump to the last day of that month.','=31-Jan-2026'],
+   ['','<b>31-Jan-2026</b>. In D2, EOMONTH(A2,1) moves one month and gives 28-Feb-2026 (2026 is not a leap year).','=31-Jan-2026']]}];
+
+PARTS['TIME · HOUR · MINUTE · SECOND']=[
+ {t:'TIME', d:'Builds a time from hour, minute and second numbers.', g:[['Hour','Minute','Second','TIME'],[9,30,0,'']], at:'D2', f:'=TIME(A2,B2,C2)', out:'9:30 AM', ty:'Time (0.3958 of a day)',
+  steps:[['A2:C2','Hour 9, minute 30, second 0.','=TIME(9,30,0)'],
+   ['','Converted to a fraction of a day: (9 × 60 + 30) ÷ 1440 = 0.3958.','=0.3958'],
+   ['','Formatted as a time: <b>9:30 AM</b>.','=0.3958']]},
+ {t:'HOUR', inherit:1, d:'The hour part (0–23) of a time.', last:'Hours part → <b>9</b>.'},
+ {t:'MINUTE', d:'The minute part (0–59) of a time.', at:'C2', f:'=MINUTE(A2)', out:'5', ty:'Number',
+  steps:[['A2','Same login time, 09:05:12.','=MINUTE(A2)'],['','Minutes part → <b>5</b>.','=5']]},
+ {t:'SECOND', d:'The second part (0–59) of a time.', at:'D2', f:'=SECOND(A2)', out:'12', ty:'Number',
+  steps:[['A2','Same login time, 09:05:12.','=SECOND(A2)'],['','Seconds part → <b>12</b>.','=12']]}];
+
+PARTS['WEEKDAY · WEEKNUM']=[
+ {t:'WEEKDAY', inherit:1, d:'Day-of-week number.', fill:{C2:'Weekday'}, last:'Type 2 counts Monday = 1 → <b>1</b>. C2 uses =IF(WEEKDAY(A2,2)>5,"Weekend","Weekday").'},
+ {t:'WEEKNUM', d:'Week number of the year.', at:'D2', f:'=WEEKNUM(A2)', out:'40', ty:'Number',
+  steps:[['A2','Date: 28-Sep-2026.','=WEEKNUM(A2)'],
+   ['','Week 1 is the week containing 1 January; by default weeks start on Sunday.','return_type 1'],
+   ['','28-Sep falls in week <b>40</b>.','=40']]}];
+
+/* ---------- Text ---------- */
+const LMR=[['Code','City','Year','Serial'],['HYD2024SAL015','','','']];
+PARTS['LEFT · MID · RIGHT']=[
+ {t:'LEFT', g:LMR, d:'Characters from the <b>start</b>.', at:'B2', f:'=LEFT(A2,3)', out:'HYD', ty:'Text',
+  steps:[['A2 c1-13','Every character has a position, starting at 1.','=LEFT("HYD2024SAL015",3)'],
+   ['c1-3','num_chars 3 from the left → positions 1–3.','="HYD"'],
+   ['','<b>HYD</b> — the city code.','="HYD"']]},
+ {t:'MID', inherit:1, g:LMR, at:'C2', d:'Characters from the <b>middle</b>, starting at a position.', last:'<b>2024</b> (as text).'},
+ {t:'RIGHT', g:LMR, d:'Characters from the <b>end</b>.', at:'D2', f:'=RIGHT(A2,3)', out:'015', ty:'Text',
+  steps:[['A2 c1-13','13 characters in total.','=RIGHT("HYD2024SAL015",3)'],
+   ['c11-13','The last 3 → positions 11–13.','="015"'],
+   ['','<b>015</b> — text, so the leading zero stays.','="015"']]}];
+
+PARTS['LEN · TRIM']=[
+ {t:'LEN', d:'Counts characters, <b>including spaces</b>.', at:'C2', f:'=LEN(A2)', out:'24', ty:'Number', fill:{D2:'18'},
+  steps:[['A2 c1-24','LEN counts every character in A2.','=LEN(A2)'],
+   ['m1-2 m10-12 m23-24','Spaces count too: 2 leading + 3 in the middle + 2 trailing = 7.','7 spaces'],
+   ['c3-9 c13-22','Letters: Sathish (7) + Thiparappu (10) = 17.','=17+7'],
+   ['','<b>24</b>. After TRIM, LEN in D2 gives 18.','=24']]},
+ {t:'TRIM', inherit:1, d:'Removes leading, trailing and repeated spaces.'}];
+
+PARTS['UPPER · LOWER · PROPER']=[
+ {t:'UPPER', d:'ALL CAPITALS.', g:[['Given','UPPER','LOWER','PROPER'],['jYOTSNA jAKKE','','','']], at:'B2', f:'=UPPER(A2)', out:'JYOTSNA JAKKE', ty:'Text',
+  steps:[['A2','Mixed-case input.','=UPPER("jYOTSNA jAKKE")'],['','Every letter becomes a capital → <b>JYOTSNA JAKKE</b>.','="JYOTSNA JAKKE"']]},
+ {t:'LOWER', d:'all small letters.', g:[['Given','UPPER','LOWER','PROPER'],['jYOTSNA jAKKE','','','']], at:'C2', f:'=LOWER(A2)', out:'jyotsna jakke', ty:'Text',
+  steps:[['A2','Mixed-case input.','=LOWER("jYOTSNA jAKKE")'],['','Every letter becomes small → <b>jyotsna jakke</b>.','="jyotsna jakke"']]},
+ {t:'PROPER', inherit:1, g:[['Given','UPPER','LOWER','PROPER'],['jYOTSNA jAKKE','','','']], at:'D2', d:'First letter of each word capital.'}];
+
+const CCG=[['Name','Dept','CONCATENATE','CONCAT','&'],['Sathish','IT','','','']];
+PARTS['CONCATENATE · CONCAT · &']=[
+ {t:'CONCATENATE', inherit:1, g:CCG, d:'Joins items one by one.'},
+ {t:'CONCAT', g:CCG, d:'Joins items and whole <b>ranges</b> (Excel 2019+).', at:'D2', f:'=CONCAT(A2:B2)', out:'SathishIT', ty:'Text',
+  steps:[['A2:B2','CONCAT accepts a whole range, A2:B2.','=CONCAT(A2:B2)'],
+   ['','It joins every cell in order, with no separator → <b>SathishIT</b>.','="SathishIT"']]},
+ {t:'& operator', g:CCG, d:'The ampersand joins two pieces at a time — quickest to type.', at:'E2', f:'=A2&" - "&B2', out:'Sathish - IT', ty:'Text',
+  steps:[['A2','Start with A2: "Sathish".','="Sathish"&" - "&B2'],
+   ['B2','& adds " - ", then & adds B2: "IT".','="Sathish"&" - "&"IT"'],
+   ['','<b>Sathish - IT</b> — same result as CONCATENATE.','="Sathish - IT"']]}];
+
+PARTS['TEXTBEFORE · TEXTAFTER']=[
+ {t:'TEXTBEFORE', inherit:1, d:'Text <b>before</b> a delimiter.', last:'Everything before it: <b>Sathish</b>.'},
+ {t:'TEXTAFTER', d:'Text <b>after</b> a delimiter.', at:'C2', f:'=TEXTAFTER(A2," ")', out:'Thiparappu', ty:'Text',
+  steps:[['m8','Find the delimiter " " — position 8.','=TEXTAFTER(A2," ")'],
+   ['c9-18','Everything after it: positions 9–18.','="Thiparappu"'],
+   ['','<b>Thiparappu</b>.','="Thiparappu"']]}];
+
+const CCD=[['Code','CHAR','Letter','CODE'],[65,'','a','']];
+PARTS['REPT · CHAR · CODE']=[
+ {t:'REPT', inherit:1, d:'Repeats text a number of times.'},
+ {t:'CHAR', g:CCD, d:'Character for a code number.', at:'B2', f:'=CHAR(A2)', out:'A', ty:'Text',
+  steps:[['A2','Code <b>65</b> in the character table.','=CHAR(65)'],['','65 is capital <b>A</b> (66 = B … 97 = a).','="A"']]},
+ {t:'CODE', g:CCD, d:'Code number of the first character.', at:'D2', f:'=CODE(C2)', out:'97', ty:'Number',
+  steps:[['C2','Letter <b>"a"</b>.','=CODE("a")'],['','Its code is <b>97</b> — small letters are 32 more than capitals (A = 65).','=97']]}];
+
+PARTS['ROW · COLUMN']=[
+ {t:'ROW', inherit:1, d:'Row number of a reference, or of the formula cell itself.'},
+ {t:'COLUMN', d:'Column number of a reference.', g:[['Name','Maths','Physics','Col no.'],['Gopi',79,62,'']], at:'D2', f:'=COLUMN(C1)', out:'3', ty:'Number',
+  steps:[['C1','COLUMN looks only at the column letter of C1.','=COLUMN(C1)'],
+   ['','C is the 3rd letter → <b>3</b>. Inside VLOOKUP, COLUMN(C1) grows to 4, 5 … as you copy right.','=3']]}];
+
+/* ---------- Statistical ---------- */
+const MSG=[['Score','','Median','Mode','STDEV'],[45],[67],[89],[72],[55],[67],[91]];
+PARTS['MEDIAN · MODE · STDEV']=[
+ {t:'MEDIAN', inherit:1, g:MSG, d:'The middle value when sorted.', last:'Median <b>67</b>.'},
+ {t:'MODE', g:MSG, d:'The most frequent value.', at:'D2', f:'=MODE(A2:A8)', out:'67', ty:'Number',
+  steps:[['A2:A8','Count how often each value appears.','=MODE({45;67;89;72;55;67;91})'],
+   ['!A3 !A7','67 appears twice; every other value once.','67 × 2'],
+   ['','<b>67</b>.','=67']]},
+ {t:'STDEV', g:MSG, d:'Typical distance of the values from their mean (sample).', at:'E2', f:'=STDEV(A2:A8)', out:'16.69', ty:'Number',
+  steps:[['A2:A8','Mean = 486 ÷ 7 = 69.43.','mean 69.43'],
+   ['A2:A8','Square each distance from the mean, add them up, divide by n − 1 = 6 → variance ≈ 278.6.','=SQRT(278.62)'],
+   ['','Square root → <b>16.69</b>: scores typically sit about 17 marks from the mean.','=16.69']]}];
+
+const PQG=[['Score','','90th pct','Q1'],[40],[50],[60],[70],[80]];
+PARTS['PERCENTILE · QUARTILE']=[
+ {t:'PERCENTILE', inherit:1, g:PQG, d:'Value below which k% of the data falls.'},
+ {t:'QUARTILE', g:PQG, d:'Quartile values: 1 = 25th, 2 = median, 3 = 75th percentile.', at:'D2', f:'=QUARTILE(A2:A6,1)', out:'50', ty:'Number',
+  steps:[['A2:A6','quart 1 means the 25th percentile.','=PERCENTILE(A2:A6,0.25)'],
+   ['A3','Position = (5 − 1) × 0.25 + 1 = 2 → exactly the 2nd value.','=50'],
+   ['','<b>50</b>.','=50']]}];
+
+/* ---------- Dynamic arrays ---------- */
+PARTS['VSTACK · HSTACK']=[
+ {t:'VSTACK', inherit:1, d:'Stacks arrays <b>on top of</b> each other.'},
+ {t:'HSTACK', d:'Places arrays <b>side by side</b>.', g:[['Team A','','Team B','','Side by side'],['Sathish','','Sowkya'],['Gopi','','Pooja']],
+  at:'E2', f:'=HSTACK(A2:A3,C2:C3)', out:[['Sathish','Sowkya'],['Gopi','Pooja']], ty:'Spilled array (2 × 2)',
+  steps:[['A2:A3','First array, Team A, becomes the first column.','=HSTACK(A2:A3,C2:C3)'],
+   ['C2:C3','Second array, Team B, is placed to its right.','={"Sathish","Sowkya";"Gopi","Pooja"}'],
+   ['','The 2 × 2 result spills into E2:F3.','2 × 2']]}];
+
+PARTS['DROP · TAKE']=[
+ {t:'DROP', inherit:1, d:'<b>Removes</b> rows or columns.'},
+ {t:'TAKE', d:'<b>Keeps</b> only the first (or last) rows or columns.', at:'D2', f:'=TAKE(A2:A4,2)', out:[['Sathish'],['Gopi']], ty:'Spilled array (2 × 1)',
+  steps:[['A2:A4','Three names.','=TAKE(A2:A4,2)'],
+   ['A2:A3','rows = 2 → keep the first two. TAKE(A2:A4,-1) would keep only the last.','={"Sathish";"Gopi"}'],
+   ['','Two names spill.','2 rows']]}];
+
+const ATTR=[["Home", "Text alignment & Wrap Text", "Basic", "Aligns text left / centre / right and top / middle / bottom; Wrap Text keeps long text inside the cell.", "Home ▸ Alignment group ▸ choose alignment or Wrap Text.", "Alt+H+A+C (centre)"], ["Home", "Center alignment without merging cells", "Basic", "Centres a title across columns WITHOUT merging, so sorting, filtering and selecting columns keep working.", "Select the cells ▸ Ctrl+1 ▸ Alignment ▸ Horizontal: \"Center Across Selection\" ▸ OK.", "Ctrl+1"], ["Home", "Standard date formats", "Basic", "Shows the same date as 16-Mar-99, 16/03/1999, Tuesday … — only the display changes, not the value.", "Select dates ▸ Ctrl+1 ▸ Number ▸ Date, or Custom: dd-mmm-yyyy, dddd, mmm-yy.", "Ctrl+Shift+#"], ["Home", "Conditional formatting", "Basic", "Colours cells automatically by value: Fail in red, top 10 in green, data bars, colour scales.", "Home ▸ Conditional Formatting ▸ Highlight Cells Rules / Top-Bottom / Data Bars / New Rule (use a formula).", "Alt+H+L"], ["Home", "Duplicates – finding", "Basic", "Highlights repeated values so you can review them before deleting.", "Select range ▸ Conditional Formatting ▸ Highlight Cells Rules ▸ Duplicate Values. Formula way: =COUNTIF($A$2:$A$100,A2)>1", "—"], ["Home", "Paste Special", "Basic", "Paste only values, formats or formulas; Transpose rows ↔ columns; add / multiply while pasting.", "Copy ▸ Home ▸ Paste ▼ ▸ Paste Special ▸ choose Values / Formats / Transpose / Operation.", "Ctrl+Alt+V"], ["Home", "Repeating items with Go To Special (Ctrl+G)", "Advanced", "Fills blank cells with the value above — the classic fix for exported reports with empty group labels.", "Select the column ▸ Ctrl+G ▸ Special ▸ Blanks ▸ OK ▸ type = and press ↑ ▸ Ctrl+Enter ▸ then Paste Special ▸ Values.", "Ctrl+G, Ctrl+Enter"], ["Home", "Hiding cells / rows / columns", "Basic", "Hides data from view without deleting it. Custom format ;;; hides only the cell content.", "Select rows/columns ▸ right-click ▸ Hide / Unhide.  Content only: Ctrl+1 ▸ Custom ▸ ;;;", "Ctrl+9 (rows), Ctrl+0 (cols)"], ["Home", "Repeat last action", "Basic", "Repeats your last command (e.g. insert row, apply colour) on the new selection.", "Do the action once, select the next place, press F4.", "F4 or Ctrl+Y"], ["Insert", "Pivot table", "Basic", "Summarises thousands of rows by dragging fields into Rows, Columns, Values and Filters.", "Click inside the data ▸ Insert ▸ PivotTable ▸ New Worksheet ▸ drag Region to Rows, Revenue to Values.", "Alt+N+V"], ["Insert", "Grouping / ungrouping in a pivot", "Advanced", "Groups dates into Months / Quarters / Years, numbers into bands, or items manually.", "Right-click a date or number in the pivot ▸ Group ▸ choose Months/Years or a band size.", "Alt+Shift+→"], ["Insert", "Calculated fields (pivot)", "Advanced", "Adds a field computed from other fields inside the pivot, e.g. Revenue per Unit.", "PivotTable Analyze ▸ Fields, Items & Sets ▸ Calculated Field ▸ Name + Formula = Revenue / Units.", "—"], ["Insert", "Slicer for pivot table", "Advanced", "Clickable buttons that filter a pivot (and several pivots at once).", "Click the pivot ▸ PivotTable Analyze ▸ Insert Slicer ▸ tick Region.", "—"], ["Insert", "Slicer for non-pivot data (Tables)", "Advanced", "Slicers also filter a normal Excel Table.", "Convert data to a Table (Ctrl+T) ▸ Table Design ▸ Insert Slicer.", "Ctrl+T"], ["Insert", "Timelines", "Advanced", "A date slicer for pivots: filter by days, months, quarters or years.", "Click the pivot ▸ PivotTable Analyze ▸ Insert Timeline ▸ tick the date field.", "—"], ["Insert", "Charts", "Basic", "Visualise data: column, bar, line, pie, scatter, combo.", "Select data ▸ Insert ▸ Recommended Charts.  Alt+F1 = instant chart on the sheet, F11 = chart sheet.", "Alt+F1 / F11"], ["Insert", "Sparklines", "Basic", "Tiny in-cell charts showing the trend of each row.", "Select an empty column ▸ Insert ▸ Sparklines ▸ Line ▸ Data range = the monthly values.", "—"], ["Insert", "Hyperlinking", "Basic", "Links to a sheet, cell, file or website — used across this workbook (🏛 / Home).", "Insert ▸ Link ▸ Place in This Document ▸ pick sheet & cell.  Formula: =HYPERLINK(\"#'Count'!A1\",\"Go\")", "Ctrl+K"], ["Page Layout / View", "Gridlines", "Basic", "Show / hide gridlines for a clean report look (hidden on the Home sheet).", "View ▸ untick Gridlines (screen) · Page Layout ▸ Sheet Options ▸ Gridlines Print (paper).", "Alt+W+V+G"], ["Formulas", "Fixing the range with F4 ($ references)", "Basic", "$A$1 = fully fixed, A$1 = row fixed, $A1 = column fixed — so formulas copy correctly.", "While editing a formula, click a reference and press F4 repeatedly to cycle the $ signs.", "F4"], ["Formulas", "Column index in curly brackets { }", "Advanced", "An array constant returns several columns at once: =VLOOKUP(A2,Table,{2,3,4},0).", "Type the list inside { } directly in the formula (Excel 365 spills the results).", "—"], ["Formulas", "Row differences (Ctrl + \\)", "Advanced", "Instantly selects cells that differ between two columns that should be identical.", "Select both columns ▸ Ctrl + \\ ▸ fill the selected cells with a colour.", "Ctrl + \\"], ["Data", "Sort & Filter", "Basic", "Sorts rows and shows only the rows you need.", "Click inside the data ▸ Data ▸ Filter ▸ use the arrows.", "Ctrl+Shift+L"], ["Data", "Text to Columns (split)", "Basic", "Splits \"Sathish Thiparappu\" into two columns by a delimiter or fixed width.", "Select the column ▸ Data ▸ Text to Columns ▸ Delimited ▸ Space ▸ Finish. Formula way: TEXTSPLIT.", "Alt+A+E"], ["Data", "Flash Fill", "Basic", "Learns a pattern from one example and fills the rest (first names, initials, codes).", "Type the first result by hand ▸ go to the next cell ▸ Ctrl+E.", "Ctrl+E"], ["Data", "Duplicates – removing", "Basic", "Deletes duplicate rows, keeping the first one. Formula way: UNIQUE.", "Data ▸ Remove Duplicates ▸ tick the columns that define a duplicate.", "Alt+A+M"], ["Data", "Data validation (drop-down lists)", "Basic", "Restricts what can be typed: a drop-down list, numbers between limits, dates, with input / error messages.", "Data ▸ Data Validation ▸ Allow: List ▸ Source: =$A$1:$A$5 or North,South,East.", "Alt+A+V+V"], ["Data", "Grouping / ungrouping columns & rows", "Basic", "A collapsible outline (+ / −) that hides detail rows or columns.", "Select rows/columns ▸ Data ▸ Group. Ungroup with Data ▸ Ungroup.", "Alt+Shift+→ / ←"], ["Review", "Protecting sheets", "Basic", "Stops others from changing a sheet (optionally with a password).", "Review ▸ Protect Sheet ▸ choose what users may do ▸ password.", "Alt+R+P+S"], ["Review", "Locking cells", "Basic", "Only LOCKED cells are protected — unlock input cells first so users can still type in them.", "Select input cells ▸ Ctrl+1 ▸ Protection ▸ untick Locked ▸ then Review ▸ Protect Sheet.", "Ctrl+1"], ["View", "Freezing the panes", "Basic", "Keeps headings visible while you scroll.", "Click the cell below the header row ▸ View ▸ Freeze Panes ▸ Freeze Panes.", "Alt+W+F+F"], ["View", "Hiding headings", "Basic", "Hides row numbers and column letters for a dashboard look.", "View ▸ untick Headings.", "Alt+W+V+H"], ["View", "Simple macros (recording)", "Advanced", "Records your clicks as VBA so a repetitive task runs with one shortcut.", "View ▸ Macros ▸ Record Macro ▸ do the steps ▸ Stop Recording. Save as .xlsm.", "Alt+F8 (run)"], ["Developer", "Developer tab", "Advanced", "Shows Macros, Visual Basic, Form Controls and Add-ins.", "File ▸ Options ▸ Customize Ribbon ▸ tick Developer ▸ OK.", "—"], ["Developer", "Assign macro to a button", "Advanced", "Run a macro by clicking a shape or button.", "Insert a shape or Developer ▸ Insert ▸ Button ▸ right-click ▸ Assign Macro.", "—"], ["Developer", "Radio (option) buttons", "Advanced", "Lets users pick ONE option; the linked cell returns 1, 2, 3 … which formulas can use (e.g. CHOOSE).", "Developer ▸ Insert ▸ Form Controls ▸ Option Button ▸ right-click ▸ Format Control ▸ Cell link.", "—"], ["Developer", "VBA – user forms", "Advanced", "Custom data-entry windows with text boxes, drop-downs and buttons.", "Alt+F11 ▸ Insert ▸ UserForm ▸ add controls ▸ write code behind the buttons.", "Alt+F11"], ["Developer", "User-defined function (SumByColor)", "Advanced", "Your own worksheet function written in VBA — code is given below this table.", "Alt+F11 ▸ Insert ▸ Module ▸ paste code ▸ use =SumByColor(colour_cell, range). Save as .xlsm.", "Alt+F11"], ["File", "Add-ins", "Advanced", "Extra tools: Analysis ToolPak (statistics), Solver (optimisation), Power Pivot.", "File ▸ Options ▸ Add-ins ▸ Manage: Excel Add-ins ▸ Go ▸ tick the add-in.", "—"], ["Automate", "Office Scripts", "Advanced", "TypeScript automation for Excel on the web / M365 — like macros that also run with Power Automate.", "Automate tab ▸ Record Actions or New Script ▸ Run.", "—"]];
+/* ---------- shared renderers ---------- */
+const lvlBadge = l => `<span class="badge ${l==='Basic'?'B':'A'}">${l}</span>`;
+const keys = s => {
+  if(!s || s==='—') return '<span style="color:var(--grey)">—</span>';
+  if(s.startsWith('~')) return `<span class="mono" style="font-size:12px;color:var(--muted)">${esc(s.slice(1))}</span>`;
+  return `<span class="kline">${s.split(' / ').map(alt=>alt.split(' ').map(k=>`<kbd class="k">${esc(k)}</kbd>`).join('')).join('<small>/</small>')}</span>`;
+};
+const path = s => `<div class="path">${s.split(' ▸ ').map((p,i,a)=>`<span>${esc(p)}</span>${i<a.length-1?'<em>›</em>':''}`).join('')}</div>`;
+
+/* ---------- Attributes ---------- */
+PAGES.attributes = () => {
+  const tabs=[...new Set(ATTR.map(a=>a[0]))];
+  return `<h2>Excel features by ribbon tab</h2>
+  <p class="page-intro">All ${ATTR.length} features from your Attributes list, grouped by where they live on the ribbon. The chips show the click path; shortcuts are for Windows (see the Shortcuts guide for MacBook and iMac).</p>
+  ${tabs.map(t=>`<div class="tabhead"><span>${esc(t)}</span><i></i></div><div class="cards">${ATTR.filter(a=>a[0]===t).map(a=>{
+    const parts=a[4].split(/(?<=\.)\s+/); const first=parts.shift().replace(/\.$/,'');
+    const sc=a[5]&&a[5]!=='—'?`<div class="kline"><small style="margin-right:6px">Windows</small>${a[5].split(/,\s*|\s+\/\s+|\s+or\s+/).map(x=>`<kbd class="k">${esc(x.replace(/\s*\(.*\)/,''))}</kbd>`).join(' ')}</div>`:'';
+    return `<div class="card"><h4>${esc(a[1])}${lvlBadge(a[2])}</h4><p>${esc(a[3])}</p>${first.includes('▸')?path(first):`<p style="color:var(--ink)">${esc(first)}</p>`}${parts.length?`<p style="font-size:12.3px">${esc(parts.join(' '))}</p>`:''}${sc}</div>`;}).join('')}</div>`).join('')}`;
+};
+
+/* ---------- Tricks & tips ---------- */
+const TIPS=[
+ ['Fill blanks with the value above','Exported reports often leave group labels only on the first row.','Select the column ▸ Ctrl+G ▸ Special ▸ Blanks ▸ type = ▸ press ↑ ▸ Ctrl+Enter ▸ Paste Special ▸ Values.','North\n\n\nSouth\n','North\nNorth\nNorth\nSouth\nSouth','Advanced'],
+ ['Double-click the fill handle','Dragging a formula down 10,000 rows is slow and error-prone.','Select the formula cell and double-click the small square at its bottom-right corner — it fills down as far as the column next to it has data.','=B2*C2\n(drag…)','=B2*C2 … =B10000*C10000\n(filled instantly)','Basic'],
+ ['Ctrl + Enter fills many cells at once','Typing the same value or formula into a selection.','Select the cells, type once, press Ctrl+Enter (⌃ Return on Mac) instead of Enter.','5 cells selected\ntype  Pending','Pending ×5','Basic'],
+ ['Center Across Selection, not Merge','Merged cells break sorting, filtering, copy-paste and column selection.','Ctrl+1 ▸ Alignment ▸ Horizontal ▸ Center Across Selection.','[ Merged A1:D1 ]','A1:D1 centred,\ncells stay separate','Basic'],
+ ['F4 cycles the $ signs','Copying formulas that shift a reference you wanted fixed.','Click on a reference while editing and press F4 (⌘ T on Mac): A1 → $A$1 → A$1 → $A1.','=B2*C1','=B2*$C$1','Basic'],
+ ['Convert data to a Table (Ctrl + T)','Ranges in formulas, charts and pivots don’t grow with new rows.','Click inside the data ▸ Ctrl+T. Formulas auto-fill, headers stay visible, slicers become available.','=SUM(C2:C100)','=SUM(Sales[Amount])\n(grows automatically)','Basic'],
+ ['Evaluate Formula to debug','A long formula returns a wrong answer and you can’t see why.','Formulas ▸ Evaluate Formula ▸ Evaluate — exactly the "Step by step" panel of this guide.','=IF(AND(…),…)','step-by-step\nintermediate results','Advanced'],
+ ['F9 inside the formula bar','Check what one part of a formula returns.','Select part of the formula in the bar ▸ F9 shows its value. Press Esc to leave the formula unchanged!','MATCH("Gopi",A2:A4,0)','2','Advanced'],
+ ['Show formulas instead of results','Auditing a sheet quickly.','Ctrl + ` (backtick) toggles formulas on/off (⌃ ` on Mac).','126128','=SUM(B2:B5)','Basic'],
+ ['Paste Special ▸ Multiply by 1','Numbers stored as text refuse to sum.','Type 1, copy it, select the text numbers ▸ Paste Special ▸ Multiply.','"1500" (text)','1500 (number)','Basic'],
+ ['Paste Special ▸ Transpose','Rows need to become columns.','Copy ▸ Paste Special ▸ tick Transpose (or =TRANSPOSE(range) in 365).','Jan Feb Mar','Jan\nFeb\nMar','Basic'],
+ ['Keep leading zeros','Phone numbers and IDs lose their zeros.','Format the column as Text before typing, or use a custom number format like 0000000000.','9876543','0009876543','Basic'],
+ ['Hide values with ;;;','You want a helper cell invisible but working.','Ctrl+1 ▸ Custom ▸ type ;;; — the value hides, the formula still works.','Helper 42','(blank-looking)','Advanced'],
+ ['Select visible cells only before copying','Copying filtered data also pastes hidden rows.','Select ▸ Alt+; (⌘ ⇧ Z on Mac) ▸ copy.','copies 500 rows','copies 12 visible rows','Advanced'],
+ ['Name a range from the Name Box','Formulas full of $B$2:$B$500 are hard to read.','Select the range ▸ type a name like Sales in the Name Box (left of the formula bar) ▸ Enter.','=SUM($B$2:$B$500)','=SUM(Sales)','Basic'],
+ ['IFNA, not IFERROR, around lookups','IFERROR hides real bugs like #REF!.','Use IFNA for "not found"; let other errors show.','=IFERROR(VLOOKUP(…),"")','=IFNA(VLOOKUP(…),"Not found")','Advanced'],
+ ['Clean imported text','Invisible characters break lookups.','=TRIM(CLEAN(SUBSTITUTE(A2,CHAR(160)," "))).','"  Gopi\u00a0 "','"Gopi"','Advanced'],
+ ['Trace precedents / dependents','Where does this number come from?','Formulas ▸ Trace Precedents shows arrows to input cells; Remove Arrows clears them.','?','arrows to inputs','Advanced'],
+ ['Freeze panes on the right cell','Headers scroll away.','Click the cell below the header row and right of the ID column ▸ View ▸ Freeze Panes.','header hides','header stays','Basic'],
+ ['Quick Analysis','Fast formatting, totals and charts.','Select data ▸ Ctrl+Q (Windows) or the icon at the bottom-right of the selection.','plain data','totals / chart / colours','Basic'],
+];
+PAGES.tips = () => `<h2>Tricks & tips</h2><p class="page-intro">${TIPS.length} habits that save time or prevent silent mistakes. Each card shows the situation, what to do, and a before → after view.</p>
+<div class="cards">${TIPS.map(t=>`<div class="card"><h4>${esc(t[0])}${lvlBadge(t[5])}</h4><p>${esc(t[1])}</p><p style="color:var(--ink)">${esc(t[2])}</p>
+<div class="ba"><div class="b">${esc(t[3])}</div>${ARROW}<div class="a">${esc(t[4])}</div></div></div>`).join('')}</div>`;
+
+/* ---------- Shortcuts ---------- */
+const SC=[
+ ['Essentials'],
+ ['Copy / Cut / Paste','Ctrl C / Ctrl X / Ctrl V','⌘ C / ⌘ X / ⌘ V','⌘ C / ⌘ X / ⌘ V'],
+ ['Paste Special','Ctrl Alt V','⌃ ⌘ V','⌃ ⌘ V'],
+ ['Undo','Ctrl Z','⌘ Z','⌘ Z'],
+ ['Redo / repeat last action','Ctrl Y / F4','⌘ Y','⌘ Y'],
+ ['Save','Ctrl S','⌘ S','⌘ S'],
+ ['Find','Ctrl F','⌘ F','⌘ F'],
+ ['Replace','Ctrl H','⌃ H','⌃ H'],
+ ['Go To (and Go To Special)','Ctrl G / F5','⌃ G','⌃ G / F5'],
+ ['Select all / current region','Ctrl A','⌘ A','⌘ A'],
+ ['Editing'],
+ ['Edit the active cell','F2','⌃ U / fn F2','F2 / ⌃ U'],
+ ['New line inside a cell','Alt Enter','⌃ ⌥ Return','⌃ ⌥ Return'],
+ ['Fill selection with the same entry','Ctrl Enter','⌃ Return','⌃ Return'],
+ ['Fill down / fill right','Ctrl D / Ctrl R','⌘ D / ⌘ R','⌘ D / ⌘ R'],
+ ['Toggle $ absolute reference','F4','⌘ T','⌘ T / F4'],
+ ['AutoSum','Alt =','⌘ ⇧ T','⌘ ⇧ T'],
+ ['Insert today’s date (fixed)','Ctrl ;','⌃ ;','⌃ ;'],
+ ['Insert current time (fixed)','Ctrl Shift ;','⌘ ;','⌘ ;'],
+ ['Legacy array formula','Ctrl Shift Enter','⌃ ⇧ Return','⌃ ⇧ Return'],
+ ['Insert Function dialog','Shift F3','fn ⇧ F3','⇧ F3'],
+ ['Flash Fill','Ctrl E','~Data ▸ Flash Fill','~Data ▸ Flash Fill'],
+ ['Delete rows / cells','Ctrl -','⌘ -','⌘ -'],
+ ['Insert rows / cells','Ctrl Shift =','⌃ ⇧ =','⌃ ⇧ ='],
+ ['Navigation & selection'],
+ ['Jump to the edge of the data','Ctrl ←↑→↓','⌘ ←↑→↓','⌘ ←↑→↓'],
+ ['Select to the edge of the data','Ctrl Shift ←↑→↓','⌘ ⇧ ←↑→↓','⌘ ⇧ ←↑→↓'],
+ ['Go to cell A1','Ctrl Home','⌃ fn ←','⌃ Home'],
+ ['Go to the last used cell','Ctrl End','⌃ fn →','⌃ End'],
+ ['Next / previous sheet','Ctrl PgDn / Ctrl PgUp','⌥ → / ⌥ ←','⌃ PgDn / ⌃ PgUp'],
+ ['Select entire column','Ctrl Space','⌃ Space','⌃ Space'],
+ ['Select entire row','Shift Space','⇧ Space','⇧ Space'],
+ ['Select visible cells only','Alt ;','⌘ ⇧ Z','⌘ ⇧ Z'],
+ ['Formatting'],
+ ['Format Cells dialog','Ctrl 1','⌘ 1','⌘ 1'],
+ ['Bold / italic / underline','Ctrl B / Ctrl I / Ctrl U','⌘ B / ⌘ I / ⌘ U','⌘ B / ⌘ I / ⌘ U'],
+ ['Strikethrough','Ctrl 5','⌘ ⇧ X','⌘ ⇧ X'],
+ ['Currency format','Ctrl Shift $','⌃ ⇧ $','⌃ ⇧ $'],
+ ['Percentage format','Ctrl Shift %','⌃ ⇧ %','⌃ ⇧ %'],
+ ['Hide rows / hide columns','Ctrl 9 / Ctrl 0','⌃ 9 / ⌃ 0','⌃ 9 / ⌃ 0'],
+ ['Data & formulas'],
+ ['Filter on / off','Ctrl Shift L','⌘ ⇧ F','⌘ ⇧ F'],
+ ['Create a Table','Ctrl T','⌃ T','⌃ T'],
+ ['Show formulas','Ctrl `','⌃ `','⌃ `'],
+ ['Calculate now','F9','⌘ = / fn F9','F9 / ⌘ ='],
+ ['Name Manager / define name','Ctrl F3','fn ⌘ F3','⌘ F3'],
+ ['Group / ungroup rows or columns','Alt Shift → / Alt Shift ←','⌘ ⇧ K / ⌘ ⇧ J','⌘ ⇧ K / ⌘ ⇧ J'],
+ ['Insert hyperlink','Ctrl K','⌘ K','⌘ K'],
+ ['Spell check','F7','fn F7','F7'],
+ ['Workbook & tools'],
+ ['New / open workbook','Ctrl N / Ctrl O','⌘ N / ⌘ O','⌘ N / ⌘ O'],
+ ['Close workbook','Ctrl W','⌘ W','⌘ W'],
+ ['Print','Ctrl P','⌘ P','⌘ P'],
+ ['Show / hide the ribbon','Ctrl F1','⌘ ⌥ R','⌘ ⌥ R'],
+ ['Macro dialog','Alt F8','fn ⌥ F8','⌥ F8'],
+ ['VBA editor','Alt F11','fn ⌥ F11','⌥ F11'],
+ ['Quick chart of selected data','Alt F1','~Insert ▸ Chart','~Insert ▸ Chart'],
+];
+PAGES.shortcuts = () => `<h2>Shortcuts</h2>
+<p class="page-intro">Side-by-side keys for Windows, MacBook (laptop keyboard) and iMac (Magic Keyboard with Numeric Keypad, which has Home, End and Page keys). Symbols: ⌘ Command · ⌃ Control · ⌥ Option · ⇧ Shift.</p>
+<div class="seg" role="group" aria-label="Show platform">${['All','Windows','MacBook','iMac'].map((p,i)=>`<button data-p="${i}" aria-pressed="${i===0}">${p}</button>`).join('')}</div>
+<div class="sc-wrap"><table class="sc" id="sct"><thead><tr><th>Action</th><th data-c="1">Windows</th><th data-c="2">MacBook</th><th data-c="3">iMac</th></tr></thead><tbody>
+${SC.map(r=>r.length===1?`<tr class="grp"><td colspan="4">${esc(r[0])}</td></tr>`:`<tr><td>${esc(r[0])}</td><td data-c="1">${keys(r[1])}</td><td data-c="2">${keys(r[2])}</td><td data-c="3">${keys(r[3])}</td></tr>`).join('')}
+</tbody></table></div>
+<div class="notes">
+ <div class="card"><h4>MacBook function keys</h4><p>F-keys control brightness and volume by default. Hold <kbd class="k">fn</kbd>, or turn on System Settings ▸ Keyboard ▸ "Use F1, F2, etc. keys as standard function keys".</p></div>
+ <div class="card"><h4>macOS may grab a shortcut first</h4><p><kbd class="k">⌃ Space</kbd> switches input language and <kbd class="k">⌃ ←</kbd>/<kbd class="k">⌃ →</kbd> switch desktops. Turn those off in System Settings ▸ Keyboard ▸ Keyboard Shortcuts if Excel doesn’t respond.</p></div>
+ <div class="card"><h4>iMac keyboards differ</h4><p>The standard Magic Keyboard (no numeric keypad) has no Home / End / Page keys — use the MacBook column. The numeric-keypad model has them, plus F13–F19.</p></div>
+ <div class="card"><h4>Windows laptops</h4><p>Many laptops need <kbd class="k">Fn</kbd> for F1–F12 and Home / End. Press <kbd class="k">Fn</kbd> <kbd class="k">Esc</kbd> on many models to lock the function keys. On Windows, <kbd class="k">Alt</kbd> also shows ribbon key tips — press it and follow the letters.</p></div>
+</div>`;
+PAGES.shortcuts_after = () => {
+  document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('.seg button').forEach(x=>x.setAttribute('aria-pressed','false')); b.setAttribute('aria-pressed','true');
+    const p=+b.dataset.p;
+    document.querySelectorAll('#sct [data-c]').forEach(c=>c.classList.toggle('col-hide', p!==0 && +c.dataset.c!==p));
+  }));
+};
+
+/* ---------- New releases ---------- */
+const REL=[
+ ['Copilot in Excel — Edit, Plan and Chat modes','ga','Agentic editing generally available since April 2026; monthly additions since (change history, chart & PivotTable skills in Aug 2026).','Microsoft 365 Copilot, Microsoft 365 Premium, Personal & Family plans','Copilot now edits the workbook directly: it plans the steps, builds formulas, charts and pivots, and shows what it changed.','Copilot pane ▸ "Add a column that flags orders above 50,000 and chart revenue by region"'],
+ ['COPILOT() worksheet function','rt','Retired on 14 September 2026 — it never left preview.','Was Insider / Frontier preview only','Existing results stay as cached values but no longer recalculate. Use the Copilot pane for the same tasks.','=COPILOT("Classify this feedback",A2)   ← no longer works'],
+ ['Python in Excel','ga','Generally available in Microsoft 365 (business plans).','Microsoft 365 — Windows & web','Write Python (pandas, matplotlib) inside a cell; it runs in the Microsoft cloud and returns tables or charts.','=PY(   then   xl("A1:C100", headers=True).describe()'],
+ ['GROUPBY · PIVOTBY · PERCENTOF','ga','Generally available since 25 September 2024.','Microsoft 365 only (not in Excel 2024 perpetual)','A pivot table written as a formula — groups, aggregates and updates automatically.','=GROUPBY(A2:A100,C2:C100,SUM)\n=PIVOTBY(A2:A100,B2:B100,C2:C100,SUM)'],
+ ['REGEXTEST · REGEXEXTRACT · REGEXREPLACE','ga','Rolled out to Microsoft 365.','Microsoft 365 only','Pattern matching replaces long LEFT/MID/FIND chains.','=REGEXEXTRACT(A2,"[0-9]+")\n=REGEXTEST(A2,"^[A-Z]{3}\\d{4}$")'],
+ ['TRIMRANGE and trim references (A.:.A)','ga','Rolled out to Microsoft 365.','Microsoft 365 only','Whole-column references without the performance cost — empty rows at the edges are trimmed.','=SUM(TRIMRANGE(A:A))\n=XLOOKUP(E2,A.:.A,B.:.B)'],
+ ['IMPORTCSV · IMPORTTEXT','pv','Insider Beta (Windows) since January 2026.','Microsoft 365 Insiders','Pull a CSV or text file into a refreshable dynamic array with one formula; refresh with Data ▸ Refresh All.','=IMPORTCSV("C:\\Data\\sales.csv")\n=IMPORTTEXT("C:\\Data\\log.txt",";")'],
+ ['Checkboxes in cells','ga','Microsoft 365 since 2024.','Microsoft 365','Insert ▸ Checkbox puts a real TRUE / FALSE checkbox in the cell — no Developer tab or linked cell.','=COUNTIF(D2:D20,TRUE)   ← tasks done'],
+ ['IMAGE function','ga','Microsoft 365.','Microsoft 365','Places a picture from a web address inside a cell; it moves and sorts with the data.','=IMAGE("https://example.com/logo.png")'],
+ ['TRANSLATE · DETECTLANGUAGE','ga','Microsoft 365.','Microsoft 365','Translate text between languages right in the grid.','=TRANSLATE(A2,"en","hi")'],
+ ['LAMBDA helpers: MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY','ga','Microsoft 365; included in Excel 2024.','Microsoft 365 · Excel 2024','Apply your own LAMBDA to every row, column or item without helper columns.','=BYROW(B2:D10,LAMBDA(r,SUM(r)))'],
+ ['Array shaping: TAKE, CHOOSEROWS, CHOOSECOLS, EXPAND, TOCOL, WRAPROWS…','ga','Microsoft 365; included in Excel 2024.','Microsoft 365 · Excel 2024','Reshape ranges with a formula — pick rows, flatten, wrap, pad.','=CHOOSECOLS(A1:F100,1,4)\n=TOCOL(A1:C3)'],
+ ['Focus Cell','ga','Microsoft 365 since 2024.','Microsoft 365','View ▸ Focus Cell highlights the active row and column so you never lose your place.','View ▸ Focus Cell'],
+];
+PAGES.releases = () => `<h2>New releases</h2>
+<p class="page-intro">Features newer than most office versions. Check yours at File ▸ Account ▸ About Excel. Information is current to late September 2026 — Microsoft ships changes monthly, so confirm on the "What’s New in Excel" blog.</p>
+<div class="co" style="padding:0;margin-bottom:14px;list-style:none"><div class="card" style="border-left:3px solid var(--org)"><h4>Excel 2024 (one-time purchase) vs Microsoft 365</h4><p>Excel 2024 includes XLOOKUP, dynamic arrays, TEXTSPLIT, VSTACK, TAKE and LAMBDA helpers. REGEX, GROUPBY / PIVOTBY, TRIMRANGE, IMPORT functions, Python and Copilot are <b>Microsoft 365 only</b>. A formula your version doesn’t know shows <b>#NAME?</b>.</p></div></div>
+<div class="notes">${REL.map(r=>`<div class="rel ${r[1]==='rt'?'gone':''}"><span class="pill ${r[1]}">${{ga:'Available',pv:'Preview',rt:'Retired'}[r[1]]}</span><h4>${esc(r[0])}</h4><div class="when">${esc(r[2])}<br>${esc(r[3])}</div><p style="margin:0;font-size:13px;line-height:1.5">${esc(r[4])}</p><code class="ex">${esc(r[5])}</code></div>`).join('')}</div>`;
+
+/* ---------- Interview questions ---------- */
+const IQ={
+ 'Basic':[
+  ['What is the difference between a workbook and a worksheet?','A workbook is the file (.xlsx). A worksheet is one tab inside it.'],
+  ['Relative vs absolute vs mixed references?','A1 changes when copied; $A$1 never changes; A$1 fixes the row, $A1 fixes the column. Press F4 to cycle.'],
+  ['COUNT vs COUNTA vs COUNTBLANK?','COUNT: numbers only. COUNTA: anything non-empty. COUNTBLANK: empty cells (and "" results).'],
+  ['How do you remove duplicates?','Data ▸ Remove Duplicates, or =UNIQUE(range) in Microsoft 365 to keep the source intact.'],
+  ['What does #N/A, #VALUE!, #REF!, #DIV/0!, #NAME? mean?','Not found · wrong data type · reference deleted · divide by zero · unknown function or name (often a typo or a function your version lacks).'],
+  ['How do you freeze the header row?','View ▸ Freeze Panes ▸ Freeze Top Row, or select the cell below the header ▸ Freeze Panes.'],
+  ['What is conditional formatting? Give an example.','Formatting that follows a rule, e.g. marks below 35 in red, or =WEEKDAY($A2,2)>5 to shade weekends.'],
+  ['How do you combine first and last name?','=A2&" "&B2, CONCATENATE, or TEXTJOIN(" ",TRUE,A2:B2).'],
+  ['What is data validation?','Rules that restrict input — a drop-down list, number limits, dates — with input and error messages.'],
+  ['How do you split a full name into two columns?','Data ▸ Text to Columns, Flash Fill (Ctrl+E), or TEXTSPLIT / TEXTBEFORE / TEXTAFTER.'],
+ ],
+ 'Intermediate':[
+  ['VLOOKUP vs INDEX/MATCH vs XLOOKUP?','VLOOKUP: first column only, right-side results, breaks on column inserts. INDEX/MATCH: any direction, robust, all versions. XLOOKUP: simplest, any direction, built-in not-found, 2021+/365.'],
+  ['Why does VLOOKUP return #N/A when the value is visible?','Extra spaces, number vs text mismatch, missing 0/FALSE, or the value is not in the first column.'],
+  ['SUMIF vs SUMIFS argument order?','SUMIF(range, criteria, sum_range) — sum range last. SUMIFS(sum_range, …) — sum range first.'],
+  ['What is a pivot table and when would you use one?','An interactive summary that groups and aggregates thousands of rows by dragging fields — e.g. revenue by region and month.'],
+  ['How do you calculate age or tenure?','=DATEDIF(start,end,"Y") for years; "YM" and "MD" for the remaining months and days.'],
+  ['How do you count unique values?','=COUNTA(UNIQUE(range)) in 365, or =SUMPRODUCT(1/COUNTIF(range,range)) in older versions.'],
+  ['IFERROR vs IFNA?','IFERROR hides all errors; IFNA only #N/A. Use IFNA for lookups so real mistakes stay visible.'],
+  ['SUBTOTAL vs SUM on filtered data?','SUBTOTAL(9,…) ignores filtered-out rows; SUM includes everything.'],
+  ['What is an Excel Table and why use one?','Ctrl+T turns a range into a structured object that expands automatically, keeps formatting and allows structured references and slicers.'],
+  ['How do you find the 2nd highest value?','=LARGE(range,2).'],
+  ['Explain Paste Special options you use most.','Values (strip formulas), Formats, Transpose, and Operation ▸ Multiply to convert text numbers.'],
+  ['How do you protect formulas but allow input?','Unlock the input cells (Ctrl+1 ▸ Protection), then Review ▸ Protect Sheet.'],
+ ],
+ 'Advanced':[
+  ['What are dynamic arrays and what is spilling?','Formulas like FILTER, SORT, UNIQUE return several values that spill into neighbouring cells. #SPILL! means the area is blocked.'],
+  ['How do you do a lookup with two conditions?','=XLOOKUP(1,(A:A=x)*(B:B=y),C:C), =INDEX(C:C,MATCH(1,(A:A=x)*(B:B=y),0)), or LOOKUP(2,1/((A=x)*(B=y)),C).'],
+  ['What is LAMBDA? And LET?','LAMBDA creates a reusable custom function (saved in Name Manager). LET names intermediate results inside one formula for speed and readability.'],
+  ['What makes a workbook slow, and how do you fix it?','Volatile functions (OFFSET, INDIRECT, TODAY), whole-column array maths, excess formatting. Replace with INDEX ranges, Tables, TRIMRANGE, or Power Query.'],
+  ['What is Power Query used for?','Repeatable import and cleaning: combine files, unpivot, split, merge — refreshed with one click.'],
+  ['What is a calculated field in a pivot?','A field computed from other pivot fields, e.g. Revenue ÷ Units.'],
+  ['How would you build a dynamic drop-down that grows?','Source the list from a Table column or =UNIQUE(…) with the # spill reference (e.g. =$F$2#).'],
+  ['Explain SUMPRODUCT with an example.','Multiplies arrays and sums: =SUMPRODUCT((Region="North")*(Sales)) — conditional sums in any version.'],
+  ['What is the difference between a macro and Office Scripts?','Macros are VBA, desktop only, saved in .xlsm. Office Scripts are TypeScript, run in Excel for the web and Power Automate.'],
+  ['GROUPBY vs a PivotTable?','GROUPBY is a formula (updates live, can feed other formulas) but Microsoft 365 only; PivotTables work everywhere and are faster to rearrange.'],
+ ],
+ 'Scenario':[
+  ['A sales file has 50,000 rows and your manager wants totals by region and month in 5 minutes. What do you do?','Ctrl+T, then Insert ▸ PivotTable: Region in Rows, Month in Columns (group dates by month), Revenue in Values. Add a slicer for product.'],
+  ['Two lists of customer IDs — how do you find who is missing from the second list?','=ISNA(MATCH(A2,List2,0)) or =COUNTIF(List2,A2)=0, or FILTER(List1,ISNA(XMATCH(List1,List2))).'],
+  ['Your VLOOKUP results change when a colleague inserts a column. Fix it.','Replace the fixed column number with MATCH on the header, or switch to XLOOKUP / INDEX-MATCH.'],
+  ['Imported numbers won’t sum. Diagnose and fix.','They are text: check alignment / ISNUMBER. Fix with VALUE, Paste Special ▸ Multiply by 1, or Text to Columns ▸ Finish. Look for CHAR(160).'],
+  ['Calculate delivery due dates excluding weekends and Indian holidays.','=WORKDAY(start, days, HolidayList); use WORKDAY.INTL for a Sunday-only weekend.'],
+  ['You need a grade from a percentage using 5 bands. Options?','Nested IF, IFS, or an approximate VLOOKUP / XLOOKUP against a band table — the table is easiest to maintain.'],
+  ['How would you show the top 5 products by revenue that update automatically?','=TAKE(SORT(GROUPBY(Product,Revenue,SUM),2,-1),5) in 365, or LARGE with INDEX/MATCH in older versions.'],
+  ['A report has blank group labels under each region. Clean it fast.','Go To Special ▸ Blanks ▸ =↑ ▸ Ctrl+Enter ▸ Paste Values.'],
+ ]};
+PAGES.interview = () => `<h2>Interview questions</h2><p class="page-intro">${Object.values(IQ).reduce((n,a)=>n+a.length,0)} common questions from basic to scenario-based. Every function page also has its own questions in the bottom-middle panel.</p>
+${Object.entries(IQ).map(([k,v])=>`<div class="tabhead"><span>${k}</span><i></i></div><div class="iq-grid">${v.map(([q,a])=>`<details class="q"><summary>${esc(q)}</summary><div class="a">${esc(a)}</div></details>`).join('')}</div>`).join('')}`;
+
+</script>
+<script>
+/* ---------- Cell helpers ---------- */
+const colNum = s => s.split('').reduce((n,ch)=>n*26+ch.charCodeAt(0)-64,0);
+const colLet = n => { let s=''; while(n>0){ const m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26);} return s; };
+function parseRef(ref){
+  ref = ref.replace(/\$/g,'');
+  const [a,b] = ref.split(':');
+  const p = x => { const m=x.match(/^([A-Z]+)(\d+)$/); return {c:colNum(m[1]), r:+m[2]}; };
+  const A=p(a), B=b?p(b):A;
+  return {c1:Math.min(A.c,B.c), r1:Math.min(A.r,B.r), c2:Math.max(A.c,B.c), r2:Math.max(A.r,B.r)};
+}
+const REF_RE = /(?<![A-Za-z_"])\$?[A-Z]{1,2}\$?\d+(?::\$?[A-Z]{1,2}\$?\d+)?(?![\w(])/g;
+const COLORS=['o','n','g'];
+function refColors(f){
+  const map={}; let i=0;
+  (f.replace(/"[^"]*"/g,'""').match(REF_RE)||[]).forEach(r=>{ const k=r.replace(/\$/g,''); if(!(k in map)) map[k]=COLORS[i++%3]; });
+  return map;
+}
+function colorFormula(f){
+  const map=refColors(f); let out=''; let last=0;
+  // skip refs inside quotes
+  const parts=f.split(/("[^"]*")/);
+  return parts.map(p=>{
+    if(p.startsWith('"')) return esc(p);
+    return esc(p).replace(REF_RE, r=>{ const k=r.replace(/\$/g,''); return map[k]?`<span class="r-${map[k]}">${r}</span>`:r; });
+  }).join('');
+}
+function fmtSyn(syn){
+  const m=syn.match(/^([A-Z0-9_.]+)\((.*)\)$/);
+  if(!m) return esc(syn);
+  const args=m[2].split(/,\s*/).filter(Boolean).map(a=> a.startsWith('[')?`<span class="opt">${esc(a)}</span>`:`<span class="arg">${esc(a)}</span>`);
+  return `<span class="fn">${m[1]}</span>(${args.join(', ')})`;
+}
+
+/* ---------- State ---------- */
+let cur=null, curEntry=null, pi=0, step=0, timer=null, speed=2600;
+const isNum = v => typeof v==='number' || (/^-?[\d,]*\.?\d+%?$/.test(String(v)) && String(v)!=='' && !/^0\d/.test(String(v)));
+
+function stepsOf(e){ return e.steps||[]; }
+
+function renderFunction(e){
+  $('body').classList.remove('page-mode');
+  $('catHint').textContent = (CATS.find(c=>c.id===e.cat)||{}).name||'';
+  const lvlName = {B:'Basic',A:'Advanced',M:'Microsoft 365'}[e.lvl];
+  const argHtml = (e.args||[]).map(([a,d])=>`<div><code>${esc(a)}</code><span>${d}</span></div>`).join('');
+  $('formula').innerHTML = `
+    <div class="fname"><h2>${esc(e.n)}</h2><span class="badge ${e.lvl}">${lvlName}</span></div>
+    <div class="does">${e.does}</div>
+    ${tabsHTML()}
+    <div class="fbar"><span class="nm">${e.at}</span><span class="fx">fx</span><span class="ftxt">${colorFormula(e.f)}</span></div>
+    <div class="syn">${synHTML(e)}</div>
+    ${argHtml?`<div class="args">${argHtml}</div>`:''}`;
+  $('qa').innerHTML = `<div class="qa">${(e.qa||[]).map(([q,a])=>`<details class="q"><summary>${q}</summary><div class="a">${a}</div></details>`).join('')}</div>`;
+  $('co').innerHTML = `<ul class="co">${(e.co||[]).map(c=>{ const cls=c.startsWith('!')?'warn':c.startsWith('×')?'err':''; return `<li class="${cls}">${c.replace(/^[!×]/,'')}</li>`; }).join('')}</ul>`;
+  $('steps').innerHTML = `<ol class="steps">${stepsOf(e).map((s,i)=>`<li data-i="${i+1}"><div>${s[1]}${s[2]?`<code class="ev">${esc(s[2])}</code>`:''}</div></li>`).join('')}</ol>`;
+  $('steps').querySelectorAll('li').forEach(li=>li.addEventListener('click',()=>{ stop(); go(+li.dataset.i); }));
+  $('formula').querySelectorAll('.ptabs button').forEach(b=>b.addEventListener('click',()=>{ stop(); selectPart(+b.dataset.pi); }));
+  go(0);
+}
+function tabsHTML(){
+  const P=curEntry.parts; if(P.length<2) return '';
+  return `<div class="ptabs" role="tablist" aria-label="Functions in this lesson">${P.map((p,i)=>`<button role="tab" data-pi="${i}" aria-selected="${i===pi}"><span class="n">${i+1}</span>${esc(p.t)}</button>`).join('')}</div>${cur.d?`<div class="pdesc">${cur.d}</div>`:''}`;
+}
+function synHTML(e){
+  const lines=e.syn.split(' | '); const P=curEntry.parts;
+  const words=new Set(String(e.t).toUpperCase().split(/[^A-Z.]+/).filter(Boolean));
+  const names=lines.map(l=>(l.match(/^([A-Z0-9_.]+)\(/)||[])[1]);
+  const any=P.length>1 && names.some(n=>words.has(n));
+  return lines.map((l,i)=>`<span class="${any && !words.has(names[i])?'dim':''}">${fmtSyn(l)}</span>`).join('<br>');
+}
+function selectPart(i){ pi=i; cur=curEntry.parts[i]; renderFunction(cur); }
+
+function outHTML(e, done){
+  if(!done) return `<div class="lbl">Result</div><div class="val wait">Press ▶ to evaluate</div>`;
+  let v;
+  if(Array.isArray(e.out)) v=`<table>${e.out.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</table>`;
+  else v=`<div class="val ${String(e.out).startsWith('#')?'err':''}">${esc(e.out)}</div>`;
+  return `<div class="lbl">Result in ${e.at}</div>${v}${e.ty?`<div class="ty">${e.ty}</div>`:''}`;
+}
+
+function renderSheet(e){
+  const S=stepsOf(e), n=S.length, done = step>=n;
+  const s = step>0 ? S[step-1] : null;
+  const g=e.g, rows=g.length; let cols=0; g.forEach(r=>cols=Math.max(cols,r.length));
+  const atP=parseRef(e.at);
+  let spill=null;
+  if(Array.isArray(e.out)){ spill={r1:atP.r1,c1:atP.c1,r2:atP.r1+e.out.length-1,c2:atP.c1+e.out[0].length-1}; cols=Math.max(cols,spill.c2); }
+  cols=Math.max(cols,atP.c1);
+  const nRows=Math.max(rows, atP.r1, spill?spill.r2:0);
+  const hits=new Set(); const tokens=[];
+  if(s && s[0]) s[0].split(' ').forEach(t=>{ if(!t) return; if(t.startsWith('!')) hits.add(t.slice(1)); else if(!t.startsWith('c')||/^c[A-Z]/.test(t)&&false) tokens.push(t); });
+  let h=`<div class="gridbox" id="gridbox"><table class="grid" id="grid"><tr><th class="rn"></th>`;
+  for(let c=1;c<=cols;c++) h+=`<th>${colLet(c)}</th>`;
+  h+='</tr>';
+  for(let r=1;r<=nRows;r++){
+    const hid=(e.hid||[]).includes(r);
+    h+=`<tr${hid?' class="hid"':''}><th class="rn">${r}</th>`;
+    for(let c=1;c<=cols;c++){
+      const ref=colLet(c)+r;
+      let v=(g[r-1]||[])[c-1]; v = v===undefined?'':v;
+      const cls=[];
+      if(r===1 && e.hdr!==false && v!=='') cls.push('hdr');
+      if(ref===e.at){ cls.push('res'); if(!done){ cls.push('pending'); v = s&&s[3]!==undefined ? s[3] : e.f.length>22? e.f.slice(0,20)+'…' : e.f; } else v = Array.isArray(e.out)? e.out[0][0] : e.out; if(done && String(v).startsWith('#')) cls.push('err'); }
+      else if(spill && done && r>=spill.r1&&r<=spill.r2&&c>=spill.c1&&c<=spill.c2){ v=e.out[r-spill.r1][c-spill.c1]; cls.push('spill'); }
+      else if(e.fill && ref in e.fill && done){ v=e.fill[ref]; cls.push('copied'); }
+      if(hits.has(ref)) cls.push('hit');
+      if(v!=='' && isNum(v) && !cls.includes('hdr')) cls.push('num');
+      h+=`<td class="${cls.join(' ')}" data-ref="${ref}">${esc(v)}</td>`;
+    }
+    h+='</tr>';
+  }
+  h+='</table></div>';
+  if(e.chars){
+    const on=new Set(), mk=new Set();
+    if(s && s[0]) s[0].split(' ').forEach(t=>{ const m=t.match(/^(c|m)(\d+)(?:-(\d+))?$/); if(m){ for(let i=+m[2];i<=+(m[3]||m[2]);i++) (m[1]==='c'?on:mk).add(i); }});
+    h+=`<div class="chars" aria-label="Characters and positions">${[...e.chars].map((ch,i)=>`<span class="${on.has(i+1)?'on':mk.has(i+1)?'mk':''}"><b>${ch===' '?'␣':esc(ch)}</b><i>${i+1}</i></span>`).join('')}</div>`;
+  }
+  const intro = e.intro || `The formula <code>${esc(e.f)}</code> is typed in <b>${e.at}</b>. Press ▶ or the → key to evaluate it one step at a time.`;
+  h+=`<div class="caption" aria-live="polite">${s? s[1] : intro}</div>`;
+  $('sheet').innerHTML=h;
+  cur._tokens = tokens.filter(t=>/^\$?[A-Z]{1,2}\$?\d+(:\$?[A-Z]{1,2}\$?\d+)?(~[ong])?$/.test(t));
+  cur._spill = done && spill ? spill : null;
+  drawHL();
+}
+
+function drawHL(){
+  const box=$('gridbox'); if(!box||!cur) return;
+  box.querySelectorAll('.hl').forEach(x=>x.remove());
+  const map=refColors(cur.f); let k=0;
+  const boxR=box.getBoundingClientRect();
+  const place=(p,cls)=>{
+    const a=box.querySelector(`[data-ref="${colLet(p.c1)}${p.r1}"]`), b=box.querySelector(`[data-ref="${colLet(p.c2)}${p.r2}"]`);
+    if(!a||!b) return;
+    const ra=a.getBoundingClientRect(), rb=b.getBoundingClientRect();
+    const d=document.createElement('div'); d.className='hl '+cls;
+    d.style.left=(ra.left-boxR.left+box.scrollLeft-1)+'px'; d.style.top=(ra.top-boxR.top-1)+'px';
+    d.style.width=(rb.right-ra.left+2)+'px'; d.style.height=(rb.bottom-ra.top+2)+'px';
+    box.appendChild(d);
+  };
+  (cur._tokens||[]).forEach(t=>{
+    let [ref,col]=t.split('~'); const key=ref.replace(/\$/g,'');
+    place(parseRef(ref), col || map[key] || COLORS[k++%3]);
+  });
+  if(cur._spill) place(cur._spill,'sp');
+}
+addEventListener('resize',()=>requestAnimationFrame(drawHL));
+
+function go(i){
+  const e=cur, n=stepsOf(e).length;
+  step=Math.max(0,Math.min(n,i));
+  renderSheet(e);
+  $('output').innerHTML = `<div class="out-card">${outHTML(e, step>=n)}</div>` + altsHTML(e);
+  $('steps').querySelectorAll('li').forEach(li=>{ const k=+li.dataset.i; li.className = k<step?'done':k===step?'cur':''; });
+  const curLi=$('steps').querySelector('li.cur'); if(curLi) curLi.scrollIntoView({block:'nearest',behavior:'smooth'});
+  const multi=curEntry && curEntry.parts.length>1;
+  $('stepCount').textContent = `${step} / ${n}`; $('stepCount').title = multi ? `${cur.t}: step ${step} of ${n}` : '';
+  $('prevBtn').disabled = step===0 && !(multi && pi>0); $('nextBtn').disabled = step===n && !(multi && pi<curEntry.parts.length-1);
+}
+function altsHTML(e){
+  if(!e.alt||!e.alt.length) return '';
+  return `<div class="alts"><h3>More ways to use it</h3>${e.alt.map(([f,o,p])=>`<div class="alt"><code>${esc(f)}</code><span class="ar">→ ${esc(o)}</span>${p?`<p>${p}</p>`:''}</div>`).join('')}</div>`;
+}
+function advance(){
+  if(!cur) return false;
+  if(step<stepsOf(cur).length){ go(step+1); return true; }
+  if(pi<curEntry.parts.length-1){ selectPart(pi+1); return true; }
+  return false;
+}
+function retreat(){
+  if(!cur) return;
+  if(step>0) return go(step-1);
+  if(pi>0){ selectPart(pi-1); go(stepsOf(cur).length); }
+}
+function play(){
+  if(!cur) return;
+  if(step>=stepsOf(cur).length && pi===curEntry.parts.length-1){ if(curEntry.parts.length>1) selectPart(0); else go(0); }
+  timer=setInterval(()=>{ if(!advance()) stop(); }, speed);
+  $('playBtn').innerHTML=PAUSE; $('playBtn').setAttribute('aria-label','Pause'); advance();
+}
+function stop(){ clearInterval(timer); timer=null; $('playBtn').innerHTML=PLAY; $('playBtn').setAttribute('aria-label','Play'); }
+$('playBtn').innerHTML=PLAY;
+$('playBtn').addEventListener('click',()=> timer?stop():play());
+$('prevBtn').addEventListener('click',()=>{ stop(); retreat(); });
+$('nextBtn').addEventListener('click',()=>{ stop(); advance(); });
+document.querySelectorAll('.speed button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.speed button').forEach(x=>x.setAttribute('aria-pressed','false'));
+  b.setAttribute('aria-pressed','true'); speed=+b.dataset.ms; if(timer){ stop(); play(); }
+}));
+
+/* ---------- Navigation ---------- */
+const CHEV='<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>';
+function buildNav(){
+  let h='<div class="group-label">Functions with live examples</div>', seenPages=false;
+  CATS.forEach(c=>{
+    if(c.type==='page' && !seenPages){ h+='<div class="group-label">Guides</div>'; seenPages=true; }
+    if(c.type==='page'){
+      h+=`<div class="cat" data-cat="${c.id}"><button class="sec gp" data-page="${c.id}"><span class="sec-text"><b>${c.name}</b>${c.sub}</span></button></div>`;
+    } else {
+      const items=FN.filter(f=>f.cat===c.id);
+      h+=`<div class="cat" data-cat="${c.id}"><button class="sec" aria-expanded="false"><span class="sec-text"><b>${c.name}</b>${c.sub}</span><span class="count">${items.length}</span>${CHEV}</button>
+      <ul class="items" hidden>${items.map(f=>`<li><button data-f="${f.id}" data-s="${esc((f.n+' '+(f.keys||'')+' '+c.name).toLowerCase())}">${esc(f.n)}<span class="lv">${f.lvl==='M'?'365':f.lvl==='A'?'Adv':''}</span></button></li>`).join('')}</ul></div>`;
+    }
+  });
+  $('nav').innerHTML=h;
+  $('totalHint').textContent = FN.length+' examples';
+  $('nav').querySelectorAll('.sec:not(.gp)').forEach(b=>b.addEventListener('click',()=>{
+    const open=b.getAttribute('aria-expanded')==='true';
+    if(!open && !$('search').value.trim()) collapseAll();
+    b.setAttribute('aria-expanded',!open); b.nextElementSibling.hidden=open;
+  }));
+  $('nav').querySelectorAll('[data-f]').forEach(b=>b.addEventListener('click',()=>openFn(b.dataset.f)));
+  $('nav').querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>openPage(b.dataset.page)));
+}
+function collapseAll(){
+  $('nav').querySelectorAll('.sec:not(.gp)').forEach(x=>{ x.setAttribute('aria-expanded','false'); x.nextElementSibling.hidden=true; });
+}
+function markNav(sel){
+  $('nav').querySelectorAll('[aria-current]').forEach(x=>x.removeAttribute('aria-current'));
+  const el=$('nav').querySelector(sel); if(el){ el.setAttribute('aria-current','true');
+    const cat=el.closest('.cat'); const sec=cat.querySelector('.sec:not(.gp)');
+    if(!$('search').value) $('nav').querySelectorAll('.cat').forEach(c=>{ if(c!==cat){ const s2=c.querySelector('.sec:not(.gp)'); if(s2){ s2.setAttribute('aria-expanded','false'); s2.nextElementSibling.hidden=true; } } });
+    if(sec && sec.getAttribute('aria-expanded')!=='true'){ sec.setAttribute('aria-expanded','true'); sec.nextElementSibling.hidden=false; }
+    el.scrollIntoView({block:'nearest'}); }
+}
+function openFn(id){
+  stop(); curEntry=FN.find(f=>f.id===id); markNav(`[data-f="${id}"]`); selectPart(0);
+  if(innerWidth<1100 && document.readyState==='complete') $('body').scrollIntoView({behavior:'smooth'});
+}
+function openPage(id){
+  stop(); cur=null; curEntry=null; markNav(`[data-page="${id}"]`);
+  $('body').classList.add('page-mode');
+  $('page').innerHTML = `<div class="page">${PAGES[id]()}</div>`; $('page').scrollTop=0;
+  if(innerWidth<1100 && document.readyState==='complete') $('body').scrollIntoView({behavior:'smooth'});
+  if(PAGES[id+'_after']) PAGES[id+'_after']();
+}
+function openFnByName(name){ const f=FN.find(x=>x.n===name); if(f) openFn(f.id); }
+
+/* ---------- Search ---------- */
+$('search').addEventListener('input',()=>{
+  const q=$('search').value.trim().toLowerCase(); let any=false;
+  $('nav').querySelectorAll('.cat').forEach(cat=>{
+    const pageBtn=cat.querySelector('[data-page]');
+    if(pageBtn){ const hit=!q||pageBtn.textContent.toLowerCase().includes(q); cat.hidden=!hit; any=any||hit; return; }
+    let n=0; cat.querySelectorAll('[data-f]').forEach(b=>{ const hit=!q||b.dataset.s.includes(q); b.parentElement.hidden=!hit; if(hit) n++; });
+    cat.hidden = n===0; any=any||n>0;
+    const sec=cat.querySelector('.sec'); if(q && n){ sec.setAttribute('aria-expanded','true'); sec.nextElementSibling.hidden=false; }
+  });
+  $('nomatch').hidden=any;
+});
+document.addEventListener('keydown',ev=>{
+  if(ev.key==='/' && document.activeElement!==$('search')){ ev.preventDefault(); $('search').focus(); return; }
+  if(document.activeElement===$('search')) return;
+  if(!cur) return;
+  if(ev.key==='ArrowRight'){ stop(); advance(); } else if(ev.key==='ArrowLeft'){ stop(); retreat(); }
+  else if(ev.key===' '){ ev.preventDefault(); timer?stop():play(); }
+});
+
+/* ---------- Parts: one walkthrough per function ---------- */
+FN.forEach(e=>{
+  const spec=(typeof PARTS!=='undefined' && PARTS[e.n]) || [{t:e.n, inherit:1}];
+  e.parts=spec.map(p=>{
+    const m={...e, ...p}; delete m.parts;
+    if(!p.inherit && !('fill' in p)) m.fill=null;
+    if(p.inherit && !('fill' in p) && spec.length>1) m.fill=null;
+    if(p.last){ m.steps=m.steps.map((x,i,a)=> i===a.length-1 ? [x[0],p.last,x[2]] : x); }
+    return m;
+  });
+  e.keys=(e.keys||'')+' '+e.parts.map(p=>p.t).join(' ');
+});
+applyTheme(theme);
+buildNav();
+function fromHash(){
+  const h=decodeURIComponent(location.hash.slice(1));
+  if(h && PAGES[h]) return openPage(h);
+  const f=FN.find(x=>x.n===h); if(f) return openFn(f.id);
+  if(!cur && !document.querySelector('.body.page-mode')) showEmpty();
+}
+function showEmpty(){
+  stop(); cur=null; curEntry=null;
+  $('body').classList.remove('page-mode'); $('catHint').textContent='';
+  const hint=t=>`<div class="empty">${t}</div>`;
+  $('formula').innerHTML=hint('Pick a category under <b>Topics</b>, then a function. Its syntax and formula appear here.');
+  $('sheet').innerHTML=hint('The worksheet lights up the cells each formula reads. Press ▶ or the → key to step through.');
+  $('output').innerHTML=hint('The result appears here once the formula is evaluated.');
+  $('steps').innerHTML=hint('Each step shows the formula as Excel evaluates it.');
+  $('qa').innerHTML=hint('Interview questions for the selected function.');
+  $('co').innerHTML=hint('Tips and traps to watch for.');
+  $('stepCount').textContent=''; $('prevBtn').disabled=true; $('nextBtn').disabled=true;
+}
+addEventListener('hashchange',fromHash);
+try{ if('scrollRestoration' in history) history.scrollRestoration='manual'; }catch(e){}
+(function(){
+  const nav=(performance.getEntriesByType && performance.getEntriesByType('navigation')[0])||{};
+  if(nav.type==='reload' && location.hash){ try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){} }
+  fromHash();
+})();
+</script>
+</body>
+</html>
